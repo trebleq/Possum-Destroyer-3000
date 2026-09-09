@@ -1,0 +1,3038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>POSSUM DESTROYER 3000</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<style>
+  :root{
+    --rust:#c15a2e;
+    --rust-bright:#ff7a3d;
+    --sick:#8fae3a;
+    --sick-bright:#c6e05a;
+    --ink:#0c0e0a;
+    --panel:#15170f;
+    --paper:#e8e0c8;
+    --danger:#d43a3a;
+    --missile:#33ff55;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#000;
+    font-family:'Courier New',monospace; color:var(--paper); user-select:none;}
+  #gameCanvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
+
+  .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(ellipse at center, #1a1a12 0%, #060704 100%); z-index:50; overflow-y:auto; padding:20px 0;}
+  .hidden{display:none !important;}
+
+  h1.title{font-size:clamp(28px,6vw,58px); letter-spacing:4px; color:var(--rust-bright);
+    text-shadow:0 0 18px rgba(255,122,61,.55), 3px 3px 0 #000; margin:0 0 6px 0; text-align:center;}
+  .subtitle{color:var(--sick-bright); letter-spacing:6px; font-size:13px; margin-bottom:34px; opacity:.85;}
+
+  .menu-btn{width:min(360px,80vw); padding:14px 18px; margin:7px 0; background:var(--panel);
+    border:2px solid var(--rust); color:var(--paper); font-family:inherit; font-size:16px; letter-spacing:2px;
+    cursor:pointer; text-align:left; position:relative; transition:transform .08s, border-color .12s;}
+  .menu-btn:hover{border-color:var(--rust-bright); transform:translateX(4px);}
+  .menu-btn:active{transform:translateX(1px);}
+  .menu-btn.disabled{opacity:.4; cursor:default; border-color:#444;}
+  .menu-btn.disabled:hover{transform:none; border-color:#444;}
+  .menu-btn .tag{position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:10px; color:var(--sick-bright); letter-spacing:1px;}
+
+  .panel-box{background:rgba(10,11,7,.92); border:2px solid var(--rust); padding:22px 26px; max-width:560px; width:88vw;}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:10px 0;}
+  .row label{font-size:13px; letter-spacing:1px; color:var(--sick-bright);}
+  input[type=range]{width:180px; accent-color:var(--rust-bright);}
+  .small{font-size:11px; opacity:.7; letter-spacing:1px;}
+
+  /* ---------- SHOP ---------- */
+  .shopRow{display:flex; justify-content:space-between; align-items:center; gap:14px; padding:11px 0; border-bottom:1px solid rgba(255,255,255,.08);}
+  .shopInfo{flex:1;}
+  .shopName{font-size:13px; letter-spacing:1px; color:var(--paper);}
+  .shopTag{color:var(--missile); font-size:9px; letter-spacing:1px; margin-left:6px;}
+  .shopDesc{font-size:10px; opacity:.62; margin-top:3px; line-height:1.4;}
+  .shopBuyBtn{background:var(--panel); border:2px solid var(--rust); color:var(--paper); font-family:inherit;
+    padding:9px 14px; font-size:11px; letter-spacing:1px; cursor:pointer; white-space:nowrap; min-width:92px;}
+  .shopBuyBtn:hover:not(:disabled){border-color:var(--rust-bright);}
+  .shopBuyBtn:disabled{opacity:.4; cursor:default;}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute; inset:0; z-index:20; pointer-events:none; font-family:inherit;}
+  #crosshair{position:absolute; left:50%; top:50%; width:18px; height:18px; margin:-9px 0 0 -9px;}
+  #crosshair::before,#crosshair::after{content:'';position:absolute;background:var(--sick-bright);}
+  #crosshair::before{left:8px;top:0;width:2px;height:18px;}
+  #crosshair::after{top:8px;left:0;height:2px;width:18px;}
+  #hitmarker{position:absolute;left:50%;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;
+    border:2px solid var(--danger); border-radius:50%; opacity:0; transform:scale(1.4);}
+  #missileLockBox{position:absolute; display:none; border:3px solid var(--missile);
+    box-shadow:0 0 12px rgba(51,255,85,.65); pointer-events:none;}
+  #missileLockBox::before{content:'LOCKING'; position:absolute; top:-16px; left:0; font-size:9px; letter-spacing:1px; color:var(--missile);}
+  #missileLockBox.locked::before{content:'LOCKED';}
+
+  /* bottom-left: vitals */
+  #bottomLeft{position:absolute; left:18px; bottom:16px; display:flex; flex-direction:column; gap:6px;}
+  .stat-bar{width:210px; height:16px; background:#1a1a1a; border:2px solid #000; position:relative;}
+  .stat-fill{height:100%; width:100%; transition:width .15s;}
+  .fill-health{background:linear-gradient(90deg,#7a1f1f,var(--danger));}
+  .fill-armour{background:linear-gradient(90deg,#3a5a7a,#5a9ad4);}
+  .stat-label{position:absolute; left:6px; top:0; font-size:10px; letter-spacing:1px; line-height:16px; text-shadow:1px 1px 0 #000;}
+
+  /* bottom-right: active weapon / ammo */
+  #bottomRight{position:absolute; right:18px; bottom:16px; text-align:right;}
+  #weaponName{font-size:14px; letter-spacing:2px; color:var(--sick-bright); text-shadow:1px 1px 0 #000;}
+  #ammoCount{font-size:30px; letter-spacing:1px; text-shadow:2px 2px 0 #000;}
+  #ammoCount .reserve{font-size:16px; opacity:.65;}
+  #reloadBar{position:absolute; right:0; bottom:-12px; width:150px; height:6px; background:#1a1a1a; border:1px solid #000;}
+  #reloadFill{height:100%; width:0%; background:var(--sick-bright);}
+
+  /* gun hotbar — only appears once the M14 is found; before that there's only one gun anyway */
+  #gunHotbar{position:absolute; right:18px; bottom:100px; display:none; flex-direction:column; gap:6px; align-items:flex-end; pointer-events:auto;}
+  .mobile-layout #gunHotbar{ top:74px; left:18px; right:auto; bottom:auto; flex-direction:row; }
+  .gunslot{width:72px; padding:6px 10px; background:rgba(15,15,10,.85); border:2px solid var(--rust);
+    font-size:10px; letter-spacing:1px; color:var(--paper); text-align:center; cursor:pointer;}
+  .gunslot.active{border-color:var(--sick-bright); box-shadow:0 0 8px rgba(198,224,90,.6);}
+  .gunslot .key{opacity:.6; font-size:8px; display:block;}
+
+  /* bottom-center: missile status readout only — no hotbar, no weapon-slot list */
+  #missileStatus{position:absolute; left:50%; bottom:104px; transform:translateX(-50%); display:none;
+    font-size:11px; letter-spacing:1px; color:var(--missile); background:rgba(0,0,0,.45);
+    padding:5px 12px; border:1px solid rgba(51,255,85,.45); white-space:nowrap;}
+
+  #bombStatus{position:absolute; left:50%; bottom:134px; transform:translateX(-50%); display:none;
+    font-size:11px; letter-spacing:1px; color:var(--rust-bright); background:rgba(0,0,0,.45);
+    padding:5px 12px; border:1px solid rgba(255,122,61,.45); white-space:nowrap;}
+
+  #interactPrompt{position:absolute; left:50%; top:58%; transform:translateX(-50%); display:none;
+    font-size:13px; letter-spacing:1px; color:var(--paper); background:rgba(0,0,0,.55);
+    padding:6px 14px; border:1px solid rgba(255,122,61,.5); white-space:nowrap;}
+
+  #subtitleBox{position:absolute; left:50%; bottom:220px; transform:translateX(-50%); display:none;
+    max-width:70vw; text-align:center; font-size:15px; letter-spacing:.5px; color:var(--paper);
+    background:rgba(0,0,0,.6); padding:8px 16px; border:1px solid rgba(255,122,61,.4); line-height:1.5;}
+
+  /* top row */
+  #topLeft{position:absolute; left:18px; top:14px; font-size:13px; letter-spacing:1px;}
+  #bucks{color:var(--sick-bright); text-shadow:1px 1px 0 #000;}
+  #objective{position:absolute; left:50%; top:14px; transform:translateX(-50%); font-size:12px; letter-spacing:1px;
+    color:var(--paper); background:rgba(0,0,0,.4); padding:5px 14px; border:1px solid rgba(255,122,61,.4); white-space:nowrap;}
+  #powerups{position:absolute; right:18px; top:14px; display:flex; flex-direction:column; gap:4px; align-items:flex-end;}
+  .pu-chip{font-size:10px; padding:3px 8px; background:rgba(20,20,10,.8); border:1px solid var(--sick-bright); color:var(--sick-bright);}
+
+  #bossBar{position:absolute; left:50%; top:52px; transform:translateX(-50%); width:min(520px,70vw); display:none;}
+  #bossBar .name{text-align:center; font-size:13px; letter-spacing:3px; color:var(--danger); margin-bottom:3px; text-shadow:1px 1px 0 #000;}
+  #bossBarOuter{height:14px; background:#1a1a1a; border:2px solid #000;}
+  #bossBarInner{height:100%; width:100%; background:linear-gradient(90deg,#7a1f1f,var(--danger));}
+
+  #centerMsg{position:absolute; left:50%; top:32%; transform:translate(-50%,-50%); text-align:center;
+    font-size:clamp(18px,3vw,26px); color:var(--sick-bright); text-shadow:2px 2px 0 #000; letter-spacing:1px; max-width:80vw;}
+
+  #vignette{position:absolute; inset:0; box-shadow:inset 0 0 0 0 rgba(180,0,0,0); pointer-events:none; transition:box-shadow .2s;}
+
+  /* ---------- CUTSCENE ---------- */
+  #cutscene{position:absolute; inset:0; z-index:60; background:#000; display:flex; align-items:flex-end; justify-content:center; padding-bottom:8vh; overflow:hidden;}
+  #cutsceneStatic{position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0px, rgba(255,255,255,.035) 1px, transparent 1px, transparent 3px);
+    animation:staticFlicker .12s steps(2) infinite;}
+  #cutsceneScan{position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(rgba(255,255,255,.028) 50%, rgba(0,0,0,.05) 50%); background-size:100% 4px;}
+  #cutsceneVignette{position:absolute;inset:0;pointer-events:none; box-shadow:inset 0 0 170px 70px rgba(0,0,0,.9);}
+  @keyframes staticFlicker{0%{opacity:.4;}50%{opacity:.65;}100%{opacity:.45;}}
+  #cutsceneBox{max-width:640px; width:86vw; background:rgba(12,12,8,.92); border:2px solid var(--rust); padding:18px 22px;
+    display:flex; gap:16px; align-items:flex-start; position:relative; z-index:2;}
+  #cutscenePortrait{width:44px; height:44px; min-width:44px; border-radius:50%; background:var(--rust);
+    display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:19px; color:#100c06;
+    border:2px solid rgba(255,255,255,.3); text-shadow:none;}
+  #cutsceneTextWrap{flex:1;}
+  #cutsceneSpeaker{color:var(--sick-bright); font-size:13px; letter-spacing:2px; margin-bottom:8px;}
+  #cutsceneText{font-size:16px; line-height:1.5; display:inline;}
+  #cutsceneCursor{display:inline-block; margin-left:2px; color:var(--sick-bright); animation:blink .8s steps(2) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  #cutsceneHint{position:absolute; right:24px; bottom:22px; font-size:11px; opacity:.6; letter-spacing:1px; z-index:2;}
+
+  #mobileControls{position:absolute; inset:0; z-index:30; display:none; pointer-events:none;}
+  #mobileControls > *{ pointer-events:auto; }
+  .joy-base{position:absolute; width:110px; height:110px; border-radius:50%; background:rgba(200,200,200,.12); border:2px solid rgba(255,255,255,.25);}
+  .joy-stick{position:absolute; width:50px; height:50px; border-radius:50%; background:rgba(255,122,61,.5); border:2px solid rgba(255,255,255,.4);
+    left:30px; top:30px;}
+  #moveJoyBase{left:24px; bottom:24px;}
+  .mbtn{position:absolute; border-radius:50%; background:rgba(140,50,20,.55); border:2px solid rgba(255,255,255,.35);
+    display:flex; align-items:center; justify-content:center; font-size:12px; letter-spacing:1px; color:#fff;}
+  #btnFire{width:82px;height:82px; right:34px; bottom:96px; background:rgba(190,50,20,.55);}
+  #btnReloadM{width:56px;height:56px; right:130px; bottom:56px;}
+  #btnJumpM{width:56px;height:56px; right:36px; bottom:196px;}
+  #btnMissileM{width:56px;height:56px; right:130px; bottom:120px; background:rgba(30,140,70,.55); display:none;}
+  #btnInteractM{width:60px;height:60px; left:44px; bottom:186px; background:rgba(180,150,40,.6); display:none;}
+  #btnBombM{width:56px;height:56px; right:36px; bottom:262px; background:rgba(200,90,30,.6); display:none;}
+  #btnPauseM{width:44px;height:44px; right:14px; top:14px;}
+  #lookArea{position:absolute; right:0; top:0; width:55%; height:70%;}
+
+  #wave-note{position:absolute; bottom:2px; left:50%; transform:translateX(-50%); font-size:10px; opacity:.3; letter-spacing:1px; z-index:15;}
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<!-- MAIN MENU -->
+<div id="mainMenu" class="screen">
+  <h1 class="title">POSSUM DESTROYER&nbsp;3000</h1>
+  <div class="subtitle">THEY WERE NEVER JUST ANIMALS</div>
+  <button class="menu-btn" id="btnPlay">PLAY <span class="tag">LEVEL 1: THE ENTRANCE</span></button>
+  <button class="menu-btn disabled">2 PLAYER CO-OP <span class="tag">ROADMAP — NEXT BUILD</span></button>
+  <button class="menu-btn disabled">LEVEL SELECT <span class="tag">2 LEVELS SO FAR</span></button>
+  <button class="menu-btn disabled">UPGRADE SHOP <span class="tag">OPENS AFTER LEVEL 1</span></button>
+  <button class="menu-btn" id="btnSettings">SETTINGS</button>
+  <button class="menu-btn" id="btnControls">CONTROLS</button>
+  <div class="small" style="margin-top:22px;max-width:440px;text-align:center;line-height:1.6;">
+    Two levels, waves of possums, a mini-boss, an upgrade shop, and a heat-seeking missile ability are all
+    real and working in this build. More levels and weapons are on the way, on top of this tested core.
+  </div>
+</div>
+
+<!-- CONTROLS SCREEN -->
+<div id="controlsScreen" class="screen hidden">
+  <div class="panel-box">
+    <h2 style="color:var(--rust-bright);letter-spacing:2px;margin-top:0;">CONTROLS</h2>
+    <div class="row"><label>MOVE</label><span>W A S D</span></div>
+    <div class="row"><label>LOOK</label><span>MOUSE</span></div>
+    <div class="row"><label>FIRE</label><span>LEFT CLICK</span></div>
+    <div class="row"><label>RELOAD (MANUAL ONLY)</label><span>R</span></div>
+    <div class="row"><label>MISSILE — AIM / FIRE</label><span>Q</span></div>
+    <div class="row"><label>JUMP</label><span>SPACE</span></div>
+    <div class="row"><label>SPRINT</label><span>SHIFT</span></div>
+    <div class="row"><label>PAUSE</label><span>ESC</span></div>
+    <div class="small" style="margin-top:10px;line-height:1.6;">
+      Missile (once purchased in the shop): press Q to aim, hold the reticle on a possum for one second
+      to lock (a green box appears), press Q again to fire. Touch devices get their own dedicated missile
+      button once it's owned, plus a joystick and the rest of the touch controls automatically.
+    </div>
+    <button class="menu-btn" style="margin-top:16px;" id="btnControlsBack">BACK</button>
+  </div>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div id="settingsScreen" class="screen hidden">
+  <div class="panel-box">
+    <h2 style="color:var(--rust-bright);letter-spacing:2px;margin-top:0;">SETTINGS</h2>
+    <div class="row"><label>MOUSE SENSITIVITY</label><input type="range" id="sensSlider" min="1" max="10" step="1"></div>
+    <div class="row"><label>MASTER VOLUME</label><input type="range" id="volSlider" min="0" max="10" step="1"></div>
+    <div class="row"><label>SCREEN SHAKE</label><input type="checkbox" id="shakeToggle" checked></div>
+    <div class="row"><label>REDUCE PARTICLES</label><input type="checkbox" id="particleToggle"></div>
+    <div class="row"><label>HEAD BOB</label><input type="checkbox" id="bobToggle" checked></div>
+    <div class="row"><label>MOBILE JOYSTICK SIZE</label><input type="range" id="joySizeSlider" min="70" max="150" step="10"></div>
+    <button class="menu-btn" style="margin-top:16px;" id="btnSettingsBack">BACK</button>
+  </div>
+</div>
+
+<!-- PAUSE MENU -->
+<div id="pauseMenu" class="screen hidden">
+  <h1 class="title" style="font-size:32px;">PAUSED</h1>
+  <button class="menu-btn" id="btnResume">RESUME</button>
+  <button class="menu-btn" id="btnRestartCP">RESTART CHECKPOINT</button>
+  <button class="menu-btn" id="btnPauseSettings">SETTINGS</button>
+  <button class="menu-btn" id="btnQuit">QUIT TO MENU</button>
+</div>
+
+<!-- SHOP -->
+<div id="shopScreen" class="screen hidden">
+  <h1 class="title" style="font-size:32px;">UPGRADE SHOP</h1>
+  <div class="panel-box" style="max-width:540px;">
+    <div class="row"><label>POSSUM BUCKS</label><span id="shopBucks" style="color:var(--sick-bright);font-size:18px;">0</span></div>
+    <div id="shopList"></div>
+  </div>
+  <button class="menu-btn" id="btnShopContinue" style="margin-top:18px;">START NEXT LEVEL</button>
+</div>
+
+<!-- LEVEL COMPLETE -->
+<div id="levelCompleteScreen" class="screen hidden">
+  <h1 class="title" style="font-size:34px;">LEVEL COMPLETE</h1>
+  <div class="panel-box" style="text-align:center;">
+    <div id="lcClue" style="color:var(--sick-bright); margin-bottom:14px; line-height:1.6;"></div>
+    <div class="small">POSSUM BUCKS EARNED: <span id="lcBucks">0</span></div>
+    <div class="small">POSSUMS CLEARED: <span id="lcKills">0</span></div>
+    <div class="small" id="lcSecretsRow" style="display:none;">SECRETS FOUND: <span id="lcSecrets">0</span></div>
+    <div class="small" id="lcM14Row" style="display:none; color:var(--sick-bright); margin-top:6px;">M14 UNLOCKED</div>
+  </div>
+  <button class="menu-btn" id="btnLevelCompleteNext" style="margin-top:20px;">CONTINUE TO UPGRADE SHOP</button>
+</div>
+
+<!-- GAME OVER -->
+<div id="gameOverScreen" class="screen hidden">
+  <h1 class="title" style="color:var(--danger);">YOU DIED</h1>
+  <div class="subtitle" style="color:#e08a8a;">THE DEN CLAIMS ANOTHER</div>
+  <button class="menu-btn" id="btnRespawn">RESTART LEVEL</button>
+  <button class="menu-btn" id="btnGoQuit">QUIT TO MENU</button>
+</div>
+
+<!-- CUTSCENE -->
+<div id="cutscene" class="hidden">
+  <div id="cutsceneStatic"></div>
+  <div id="cutsceneScan"></div>
+  <div id="cutsceneVignette"></div>
+  <div id="cutsceneBox">
+    <div id="cutscenePortrait">M</div>
+    <div id="cutsceneTextWrap">
+      <div id="cutsceneSpeaker">MISSION CONTROL</div>
+      <div><span id="cutsceneText"></span><span id="cutsceneCursor">▌</span></div>
+    </div>
+  </div>
+  <div id="cutsceneHint">CLICK / TAP TO CONTINUE</div>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="crosshair"></div>
+  <div id="hitmarker"></div>
+  <div id="missileLockBox"></div>
+  <div id="vignette"></div>
+  <div id="topLeft">POSSUM BUCKS: <span id="bucks">0</span></div>
+  <div id="objective">FIND A WAY DEEPER INTO THE DEN</div>
+  <div id="bossBar"><div class="name" id="bossName">THE BURROWER</div><div id="bossBarOuter"><div id="bossBarInner"></div></div></div>
+  <div id="powerups"></div>
+  <div id="bottomLeft">
+    <div class="stat-bar"><div class="stat-fill fill-health" id="healthFill"></div><div class="stat-label">HEALTH <span id="healthNum">100</span></div></div>
+    <div class="stat-bar"><div class="stat-fill fill-armour" id="armourFill" style="width:0%;"></div><div class="stat-label">ARMOUR <span id="armourNum">0</span></div></div>
+  </div>
+  <div id="missileStatus"></div>
+  <div id="bombStatus"></div>
+  <div id="gunHotbar">
+    <div class="gunslot" id="gunSlotPistol"><span class="key">1</span>PISTOL</div>
+    <div class="gunslot" id="gunSlotM14"><span class="key">2</span>M14</div>
+  </div>
+  <div id="interactPrompt"></div>
+  <div id="subtitleBox"></div>
+  <div id="bottomRight">
+    <div id="weaponName">PISTOL</div>
+    <div id="ammoCount">12 <span class="reserve">/ ∞</span></div>
+    <div id="reloadBar"><div id="reloadFill"></div></div>
+  </div>
+  <div id="centerMsg"></div>
+</div>
+
+<!-- MOBILE CONTROLS -->
+<div id="mobileControls">
+  <div id="lookArea"></div>
+  <div class="joy-base" id="moveJoyBase"><div class="joy-stick" id="moveJoyStick"></div></div>
+  <div class="mbtn" id="btnFire">FIRE</div>
+  <div class="mbtn" id="btnReloadM">RELOAD</div>
+  <div class="mbtn" id="btnJumpM">JUMP</div>
+  <div class="mbtn" id="btnMissileM">MSL</div>
+  <div class="mbtn" id="btnInteractM">USE</div>
+  <div class="mbtn" id="btnBombM">BOMB</div>
+  <div class="mbtn" id="btnPauseM">II</div>
+</div>
+
+<div id="wave-note">POSSUM DESTROYER 3000 — VERTICAL SLICE BUILD</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =========================================================
+   POSSUM DESTROYER 3000 — PLAYABLE VERTICAL SLICE
+   Level 1: THE ENTRANCE   |   Level 2: THE BURROWS
+   ========================================================= */
+
+// ---------- GLOBAL STATE ----------
+const State = {
+  running:false, paused:false, pointerLocked:false,
+  settings:{ sens:5, vol:6, shake:true, reduceParticles:false, headBob:true, joySize:110 },
+  bucks:0, kills:0, levelStartBucks:0, shopPurchases:{},
+  isMobile: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || ('ontouchstart' in window && window.innerWidth < 1100),
+  bossActive:false, bossDefeated:false, levelEnded:false,
+  _waveSpawned:false, _bossSpawned:false, _exitSpawned:false, _gateOpened:false,
+  mobileSetupDone:false, cutsceneLock:false, onLadder:null, level3Completed:false, _doorReady:false,
+};
+
+const Player = {
+  height:1.7, radius:0.35,
+  pos:new THREE.Vector3(0,1.7,8),
+  vel:new THREE.Vector3(0,0,0),
+  yaw:0, pitch:0,
+  health:100, maxHealth:100,
+  armour:0, maxArmour:50,
+  speed:4.6, sprintMul:1.6, jumpForce:5.2, grounded:true,
+  sprinting:false,
+  downed:false,
+  checkpoint:new THREE.Vector3(0,1.7,8),
+  powerups:{},
+  hasMissile:false, // permanent once bought — never reset by level restarts
+  hasM14:false,      // permanent once picked up in Level 3 — never reset by level restarts
+  hasPossumBomb:false, // permanent once bought (only offered after Level 3) — never reset by level restarts
+};
+
+const Weapon = {
+  name:'PISTOL', mag:12, magMax:12, reserve:Infinity, reloading:false, reloadTime:1.1, reloadT:0,
+  fireRate:0.18, fireT:0, damage:18,
+};
+// M14 — added alongside the pistol, never replacing it. Same fields/shape as Weapon so the
+// existing fire/reload math works unmodified for either weapon.
+const M14 = {
+  name:'M14', mag:20, magMax:20, reserve:80, reloading:false, reloadTime:1.6, reloadT:0,
+  fireRate:0.14, fireT:0, damage:34,
+};
+let currentWeapon = 'pistol'; // 'pistol' | 'm14'
+function activeWeapon(){ return currentWeapon==='m14' ? M14 : Weapon; }
+
+let currentLevelIndex = 0;
+
+// ---------- THREE SETUP ----------
+const canvas = document.getElementById('gameCanvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:!State.isMobile});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, State.isMobile?1.5:2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1015);
+scene.fog = new THREE.Fog(0x0d1015, 8, 42);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 200);
+scene.add(camera);
+
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+scene.add(new THREE.AmbientLight(0x54544a, 0.75));
+scene.add(new THREE.HemisphereLight(0x7c8ea6, 0x342a1a, 0.5));
+const playerLight = new THREE.PointLight(0xfff2d8, 0.42, 9, 2);
+camera.add(playerLight);
+
+const lampMat = new THREE.MeshStandardMaterial({color:0x332211, emissive:0xffaa55, emissiveIntensity:1.2});
+let lampObjects = [];
+function addLamp(x,y,z){
+  const light = new THREE.PointLight(0xffbb77, 1.3, 11, 2);
+  light.position.set(x,y,z);
+  scene.add(light);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8), lampMat);
+  bulb.position.set(x,y,z);
+  scene.add(bulb);
+  lampObjects.push(light,bulb);
+}
+function clearLamps(){ for(const o of lampObjects) scene.remove(o); lampObjects.length=0; }
+function addBulb(x,y,z){
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8), lampMat);
+  bulb.position.set(x,y,z);
+  scene.add(bulb);
+  lampObjects.push(bulb); // still cleared with the level, just carries no real-time light
+}
+
+// ---------- SHARED LEVEL-BUILDING TOOLKIT ----------
+const wallMat  = new THREE.MeshStandardMaterial({color:0x4a4230, roughness:1});
+const floorMat = new THREE.MeshStandardMaterial({color:0x392f1e, roughness:1});
+const ceilMat  = new THREE.MeshStandardMaterial({color:0x2a2416, roughness:1});
+const rootMat  = new THREE.MeshStandardMaterial({color:0x53442c, roughness:1});
+const wallMat2  = new THREE.MeshStandardMaterial({color:0x3d4a2e, roughness:1});
+const floorMat2 = new THREE.MeshStandardMaterial({color:0x2e3a22, roughness:1});
+const ceilMat2  = new THREE.MeshStandardMaterial({color:0x222b18, roughness:1});
+const pillarMat = new THREE.MeshStandardMaterial({color:0x4a3f26, roughness:1});
+
+const colliders = [];
+const levelGroup = new THREE.Group();
+scene.add(levelGroup);
+
+function box(w,h,d,mat){ return new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat); }
+const CEIL_Y = 4.2;
+function bigFloor(x1,z1,x2,z2, fMat=floorMat, cMat=ceilMat){
+  const w=Math.abs(x2-x1), d=Math.abs(z2-z1);
+  const f = box(w,0.3,d,fMat); f.position.set((x1+x2)/2, -0.15, (z1+z2)/2); levelGroup.add(f);
+  const c = box(w,0.3,d,cMat); c.position.set((x1+x2)/2, CEIL_Y, (z1+z2)/2); levelGroup.add(c);
+}
+function wallSeg(x1,z1,x2,z2, mat=wallMat, h=CEIL_Y){
+  const w=Math.max(Math.abs(x2-x1),0.3), d=Math.max(Math.abs(z2-z1),0.3);
+  const m = box(w,h,d,mat); m.position.set((x1+x2)/2, h/2, (z1+z2)/2); levelGroup.add(m);
+  colliders.push({min:new THREE.Vector3(Math.min(x1,x2)-0.15, 0, Math.min(z1,z2)-0.15),
+                   max:new THREE.Vector3(Math.max(x1,x2)+0.15, h, Math.max(z1,z2)+0.15)});
+}
+function spawnPillar(x,z){
+  const height=CEIL_Y, radius=0.55;
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius,radius*1.15,height,10), pillarMat);
+  mesh.position.set(x,height/2,z);
+  levelGroup.add(mesh);
+  colliders.push({min:new THREE.Vector3(x-radius-0.1,0,z-radius-0.1), max:new THREE.Vector3(x+radius+0.1,height,z+radius+0.1)});
+}
+// A climbable ladder from bottomGroundY to topGroundY (both are floor heights, not eye heights).
+// Registers as a reusable interactable — pressing E/tap attaches the player to the climb branch
+// in updatePlayer, which they leave automatically at the top/bottom or early with a jump.
+function spawnLadder(x, z, bottomGroundY, topGroundY){
+  const railMat = new THREE.MeshStandardMaterial({color:0x5a5f58, roughness:0.5, metalness:0.5});
+  const span = topGroundY - bottomGroundY;
+  const group = new THREE.Group();
+  const railGeo = new THREE.BoxGeometry(0.07, span+0.6, 0.07);
+  const railL = new THREE.Mesh(railGeo, railMat); railL.position.set(-0.32, bottomGroundY+span/2, 0); group.add(railL);
+  const railR = railL.clone(); railR.position.x = 0.32; group.add(railR);
+  const rungCount = Math.max(3, Math.round(span/0.42));
+  for(let i=0;i<=rungCount;i++){
+    const rung = new THREE.Mesh(new THREE.BoxGeometry(0.72,0.05,0.05), railMat);
+    rung.position.set(0, bottomGroundY + (span*i/rungCount), 0);
+    group.add(rung);
+  }
+  group.position.set(x, 0, z);
+  levelGroup.add(group);
+  interactables.push({
+    pos:[x,z], radius:1.3, label:'CLIMB', used:false, reusable:true,
+    action: ()=>{
+      State.onLadder = {
+        x, z,
+        bottomEyeY: Player.height + bottomGroundY,
+        topEyeY: Player.height + topGroundY,
+      };
+      Player.grounded = false;
+    }
+  });
+}
+// A simple sloped floor slab matching a walkable rampZone — used for stairs/ramps.
+// Pass fromY===toY for a flat elevated landing at the top.
+function addRampVisual(x1,z1,x2,z2,fromY,toY,mat){
+  const w = Math.abs(x2-x1), d = Math.abs(z2-z1);
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w,0.25,d), mat);
+  mesh.position.set((x1+x2)/2, (fromY+toY)/2, (z1+z2)/2);
+  const rise = toY-fromY;
+  if(w>=d) mesh.rotation.z = -Math.atan2(rise, w);
+  else mesh.rotation.x = Math.atan2(rise, d);
+  levelGroup.add(mesh);
+}
+function scatterClutter(mat, zFrom, zTo, count=24, xSpread=18){
+  for(let i=0;i<count;i++){
+    const g = new THREE.Mesh(new THREE.SphereGeometry(0.15+Math.random()*0.25,6,6), mat);
+    g.position.set((Math.random()-0.5)*xSpread, 0.1, zFrom+Math.random()*(zTo-zFrom));
+    levelGroup.add(g);
+  }
+}
+// Short rusty pipe segments run along the floor or low against a wall — Level 3's recurring
+// "rusty pipes" environment detail (separate from any single landmark pipe).
+function scatterPipes(mat, zFrom, zTo, count=14, xSpread=22){
+  for(let i=0;i<count;i++){
+    const len = 1.2+Math.random()*1.8;
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,len,8), mat);
+    const alongX = Math.random()<0.5;
+    pipe.rotation.z = alongX ? Math.PI/2 : 0;
+    pipe.rotation.x = alongX ? 0 : Math.PI/2;
+    pipe.position.set((Math.random()-0.5)*xSpread, 0.14, zFrom+Math.random()*(zTo-zFrom));
+    levelGroup.add(pipe);
+  }
+}
+// Broken glass vials lying on their side with a small acid-green puddle underneath —
+// Level 4's recurring environmental detail (lab research gone wrong).
+const vialGlassMat = new THREE.MeshStandardMaterial({color:0xaaddcc, transparent:true, opacity:0.4, roughness:0.1});
+const vialAcidMat = new THREE.MeshStandardMaterial({color:0x7fdd33, emissive:0x4a9922, emissiveIntensity:0.6, transparent:true, opacity:0.75});
+function scatterVials(zFrom, zTo, count=16, xSpread=20){
+  for(let i=0;i<count;i++){
+    const x = (Math.random()-0.5)*xSpread, z = zFrom+Math.random()*(zTo-zFrom);
+    const puddle = new THREE.Mesh(new THREE.CircleGeometry(0.18+Math.random()*0.15,10), vialAcidMat);
+    puddle.rotation.x = -Math.PI/2; puddle.position.set(x,0.02,z);
+    levelGroup.add(puddle);
+    const vial = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.05,0.28,8), vialGlassMat);
+    vial.rotation.z = Math.PI/2; vial.rotation.y = Math.random()*Math.PI;
+    vial.position.set(x+(Math.random()-0.5)*0.2, 0.05, z+(Math.random()-0.5)*0.2);
+    levelGroup.add(vial);
+  }
+}
+function wrapText(ctx,text,x,y,maxW,lh){
+  const words=text.split(' '); let line=''; let yy=y;
+  for(const w of words){
+    const test=line+w+' ';
+    if(ctx.measureText(test).width>maxW && line!==''){ ctx.fillText(line,x,yy); line=w+' '; yy+=lh; }
+    else line=test;
+  }
+  ctx.fillText(line,x,yy);
+}
+function makeTextPlane(text, w=3, h=1){
+  const cnv = document.createElement('canvas'); cnv.width=512; cnv.height=170;
+  const ctx = cnv.getContext('2d');
+  ctx.clearRect(0,0,cnv.width,cnv.height);
+  ctx.font='bold 30px monospace'; ctx.textAlign='center';
+  ctx.fillStyle='rgba(0,0,0,0.6)';
+  wrapText(ctx, text, cnv.width/2+3, 63, 460, 38);
+  ctx.fillStyle='rgba(255,244,220,0.16)';
+  wrapText(ctx, text, cnv.width/2-2, 57, 460, 38);
+  ctx.fillStyle='rgba(15,12,6,0.88)';
+  wrapText(ctx, text, cnv.width/2, 60, 460, 38);
+  const tex = new THREE.CanvasTexture(cnv);
+  return new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({map:tex, transparent:true}));
+}
+
+// ---------- LEVEL 1: THE ENTRANCE ----------
+function buildLevel1(){
+  bigFloor(-4,-4, 4,14);
+  bigFloor(-1.5,14, 1.5,24);
+  bigFloor(-7,24, 7,40);
+  bigFloor(-1.5,40, 1.5,48);
+  bigFloor(-10,48, 10,66);
+
+  wallSeg(-4,-4, 4,-4);
+  wallSeg(-4,-4,-4,14);
+  wallSeg(4,-4,4,14);
+  wallSeg(-4,14,-1.5,14);
+  wallSeg(1.5,14,4,14);
+
+  wallSeg(-1.5,14,-1.5,24);
+  wallSeg(1.5,14,1.5,24);
+
+  wallSeg(-7,24,-1.5,24);
+  wallSeg(1.5,24,7,24);
+  wallSeg(-7,24,-7,40);
+  wallSeg(7,24,7,40);
+  wallSeg(-7,40,-1.5,40);
+  wallSeg(1.5,40,7,40);
+
+  wallSeg(-1.5,40,-1.5,48);
+  wallSeg(1.5,40,1.5,48);
+
+  // note: the -1.5..1.5 gap here is where the dead-end gate wall is installed (see spawnGateWall)
+  wallSeg(-10,48,-1.5,48);
+  wallSeg(1.5,48,10,48);
+  wallSeg(-10,48,-10,66);
+  wallSeg(10,48,10,66);
+  wallSeg(-10,66,10,66);
+
+  addLamp(0,3.6,4); addLamp(0,3.6,19); addLamp(-4,3.6,30); addLamp(4,3.6,34);
+  addLamp(0,3.6,44); addLamp(-6,3.6,56); addLamp(6,3.6,58);
+  scatterClutter(rootMat, 20, 64, 26);
+
+  // engraved on the SOLID part of the back wall, well clear of the gate gap so it's always visible
+  const clue = makeTextPlane("THEY'RE NOT ATTACKING RANDOMLY.  —L", 3.2, 1.05);
+  clue.position.set(-5, 2, 47.8); clue.rotation.y = Math.PI;
+  levelGroup.add(clue);
+}
+
+// ---------- LEVEL 2: THE BURROWS (bigger, with obstacles + a new enemy) ----------
+function buildLevel2(){
+  bigFloor(-4,-3, 4,9,   floorMat2, ceilMat2);
+  bigFloor(-1.5,9, 1.5,19, floorMat2, ceilMat2);
+
+  // a junction room forces a real turn east instead of continuing straight ahead
+  bigFloor(-8,19, 8,25, floorMat2, ceilMat2);
+  bigFloor(8,21, 16,25, floorMat2, ceilMat2);   // corridor turning east
+
+  // the main room is entered from its WEST side and exits to the NORTH — a genuine dogleg
+  bigFloor(16,15, 40,37, floorMat2, ceilMat2);
+
+  bigFloor(26,37, 30,45, floorMat2, ceilMat2);  // corridor north out of the main room
+  bigFloor(20,45, 36,58, floorMat2, ceilMat2);  // gated final room + exit
+
+  wallSeg(-4,-3, 4,-3, wallMat2);
+  wallSeg(-4,-3,-4,9, wallMat2);
+  wallSeg(4,-3,4,9, wallMat2);
+  wallSeg(-4,9,-1.5,9, wallMat2);
+  wallSeg(1.5,9,4,9, wallMat2);
+
+  wallSeg(-1.5,9,-1.5,19, wallMat2); wallSeg(1.5,9,1.5,19, wallMat2);
+
+  wallSeg(-8,19,-1.5,19, wallMat2); wallSeg(1.5,19,8,19, wallMat2); // south, gap = corridor in
+  wallSeg(-8,19,-8,25, wallMat2);                                   // west, full
+  wallSeg(-8,25,8,25, wallMat2);                                    // north, full
+  wallSeg(8,19,8,21, wallMat2);                                     // east cap — gap 21..25 = corridor east
+
+  wallSeg(8,21,16,21, wallMat2); wallSeg(8,25,16,25, wallMat2);      // corridor-east side walls
+
+  wallSeg(16,15,16,21, wallMat2); wallSeg(16,25,16,37, wallMat2);   // main room west wall, gap = corridor-east doorway
+  wallSeg(16,15,40,15, wallMat2);                                   // south, full
+  wallSeg(40,15,40,37, wallMat2);                                   // east, full
+  wallSeg(16,37,26,37, wallMat2); wallSeg(30,37,40,37, wallMat2);   // north, gap = exit corridor
+
+  wallSeg(26,37,26,45, wallMat2); wallSeg(30,37,30,45, wallMat2);   // exit corridor side walls
+
+  wallSeg(20,45,26,45, wallMat2); wallSeg(30,45,36,45, wallMat2);   // final room south, gap matches corridor
+  wallSeg(20,45,20,58, wallMat2); wallSeg(36,45,36,58, wallMat2);   // final room sides
+  wallSeg(20,58,36,58, wallMat2);                                   // final room north, full
+
+  // obstacle pillars — kept a clear 3+ units from every wave spawn point below so possums
+  // never spawn embedded in one (that was the cause of the "stuck AI" bug)
+  spawnPillar(22,20); spawnPillar(34,20);
+  spawnPillar(24,32); spawnPillar(32,30);
+
+  spawnBucksPickup(37,19,22);
+
+  addLamp(0,3.6,3); addLamp(0,3.6,16); addLamp(0,3.6,22);
+  addLamp(24,3.6,20); addLamp(24,3.6,32); addLamp(28,3.6,41); addLamp(28,3.6,52);
+  scatterClutter(rootMat, 15, 58, 30, 20);
+
+  const clue = makeTextPlane("THEY'RE BUILDING SOMETHING.  —L KNOWS.", 3.4, 1.05);
+  clue.position.set(28, 2, 15.25);
+  levelGroup.add(clue);
+}
+
+// ---------- LEVEL 3: THE SEWER MAZE ----------
+const sewerWallMat  = new THREE.MeshStandardMaterial({color:0x4c504c, roughness:1});
+const sewerFloorMat = new THREE.MeshStandardMaterial({color:0x30332f, roughness:1});
+const sewerCeilMat  = new THREE.MeshStandardMaterial({color:0x22241f, roughness:1});
+const sewerFloodMat = new THREE.MeshStandardMaterial({color:0x243038, roughness:0.7});
+const pipePropMat   = new THREE.MeshStandardMaterial({color:0x5a4028, roughness:0.6, metalness:0.3});
+const rustyPipeMat  = new THREE.MeshStandardMaterial({color:0x8a4a2c, roughness:0.85, metalness:0.35});
+
+const labWallMat  = new THREE.MeshStandardMaterial({color:0xaab0b4, roughness:0.55, metalness:0.15});
+const labFloorMat = new THREE.MeshStandardMaterial({color:0x6d7478, roughness:0.5, metalness:0.1});
+const labCeilMat  = new THREE.MeshStandardMaterial({color:0x555b5e, roughness:0.7});
+const labDeskMat  = new THREE.MeshStandardMaterial({color:0x2c3236, roughness:0.6, metalness:0.3});
+const labGlassMat = new THREE.MeshStandardMaterial({color:0x88ccdd, transparent:true, opacity:0.28, roughness:0.1, metalness:0.2});
+
+function spawnSwitchProp(x,z,rotationY=0){
+  const baseMat = new THREE.MeshStandardMaterial({color:0x555555, roughness:0.6, metalness:0.3});
+  const lightMat = new THREE.MeshStandardMaterial({color:0xff3333, emissive:0xff2222, emissiveIntensity:1.2});
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.9,0.15), baseMat);
+  panel.position.set(x,1.1,z); panel.rotation.y = rotationY;
+  levelGroup.add(panel);
+  // the indicator light sits just off the panel's face, offset along its own local +Z (outward from the wall)
+  const outward = new THREE.Vector3(0,0,0.09).applyEuler(new THREE.Euler(0,rotationY,0));
+  const indicator = new THREE.Mesh(new THREE.SphereGeometry(0.12,8,8), lightMat);
+  indicator.position.set(x+outward.x,1.4,z+outward.z);
+  levelGroup.add(indicator);
+  const switchLight = new THREE.PointLight(0xff3333,0.8,4,2); switchLight.position.set(x,1.4,z); levelGroup.add(switchLight);
+  interactables.push({
+    pos:[x,z], radius:1.7, label:'ACTIVATE SWITCH', used:false,
+    action: ()=>{
+      switchesActivated++;
+      indicator.material.color.set(0x33ff55); indicator.material.emissive.set(0x22dd44);
+      switchLight.color.set(0x33ff55);
+      playBeep(700,0.15,'square',0.6);
+      setCenterMsg('POWER: '+switchesActivated+'/3', 2.0);
+      document.getElementById('objective').textContent = 'POWER: '+switchesActivated+'/3';
+    }
+  });
+}
+function spawnRecorderProp(x,z){
+  const mat = new THREE.MeshStandardMaterial({color:0x2c2c2c, roughness:0.6});
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.35,0.2,0.25), mat);
+  body.position.set(x,0.15,z); // sitting on the ground, not floating on an invisible shelf
+  levelGroup.add(body);
+  const recLight = new THREE.PointLight(0xff7700,0.6,2.5,2); recLight.position.set(x,0.35,z); levelGroup.add(recLight);
+  const beaconMat = new THREE.MeshStandardMaterial({color:0xff7700, emissive:0xff5500, emissiveIntensity:1});
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.05,8,8), beaconMat);
+  beacon.position.set(x,0.32,z); levelGroup.add(beacon);
+  const pulseEntry = {light:recLight, base:0.6, amp:0.5, speed:2.2, active:true, material:beaconMat, matBase:1.0, matAmp:0.9};
+  pulsingLights.push(pulseEntry);
+  interactables.push({
+    pos:[x,z], radius:1.5, label:'PLAY RECORDING', used:false,
+    action: ()=> playRecorderScene(body, recLight, pulseEntry)
+  });
+}
+function playRecorderScene(bodyMesh, light, pulseEntry){
+  State.cutsceneLock = true;
+  pulseEntry.active = false; // hold steady during playback instead of fighting the idle pulse
+  const dx=bodyMesh.position.x-Player.pos.x, dz=bodyMesh.position.z-Player.pos.z;
+  const targetYaw = Math.atan2(-dx,-dz);
+  lerpCameraTo(targetYaw, -0.12, 0.4, ()=>{
+    light.intensity = 2.2;
+    bodyMesh.material.emissive = new THREE.Color(0xff7700); bodyMesh.material.emissiveIntensity = 1.2;
+    ensureAudio(); playBeep(2200,0.25,'sawtooth',0.35);
+    setTimeout(()=>{
+      const lines = [
+        {text:'UNKNOWN: "They\u2019re scared."'},
+        {text:'"Everyone keeps calling them monsters."'},
+        {text:'"They\u2019re not."'},
+        {text:'"They just need someone to protect them."'},
+      ];
+      showSubtitleSequence(lines, ()=>{
+        playBeep(2200,0.2,'sawtooth',0.3);
+        bodyMesh.material.emissiveIntensity=0;
+        pulseEntry.active = true; // resume the idle pulse now that playback is done
+        State.cutsceneLock=false;
+      });
+    }, 350);
+  });
+}
+function spawnM14Pickup(x,z){
+  const group = new THREE.Group();
+  const stock = new THREE.Mesh(new THREE.BoxGeometry(0.12,0.1,0.6), pipePropMat); stock.position.z=-0.3; group.add(stock);
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.9,8), new THREE.MeshStandardMaterial({color:0x2c2d2f,metalness:0.5,roughness:0.4}));
+  barrel.rotation.x=Math.PI/2; barrel.position.z=0.4; group.add(barrel);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.12,0.5), new THREE.MeshStandardMaterial({color:0x2c2d2f,metalness:0.5,roughness:0.4}));
+  group.add(body);
+  group.rotation.z = 0.35; group.position.set(x,0.15,z);
+  levelGroup.add(group);
+  // spotlight and beacon are children of the pickup group so they're automatically
+  // cleaned up together when the group is removed on pickup — no separate tracking needed
+  const spot = new THREE.PointLight(0xff8800,1.5,4,2); spot.position.set(0,1.3,0); group.add(spot);
+  const beaconMat = new THREE.MeshStandardMaterial({color:0xff7700, emissive:0xff5500, emissiveIntensity:1});
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.09,8,8), beaconMat);
+  beacon.position.set(0,0.8,0); group.add(beacon);
+  pulsingLights.push({light:spot, base:1.5, amp:0.7, speed:2.6, active:true, material:beaconMat, matBase:1.0, matAmp:0.9});
+  interactables.push({
+    pos:[x,z], radius:1.6, label:'M14 — PICK UP', used:false,
+    action: ()=> pickupM14(group)
+  });
+}
+function pickupM14(prop){
+  State.cutsceneLock = true;
+  levelGroup.remove(prop); // removes the whole group — weapon mesh, spotlight, and beacon together
+  playBeep(200,0.12,'square',0.6);
+  currentWeapon = 'm14'; // set immediately so the per-frame viewmodel update keeps the M14 visible through the animation
+  m14Group.visible = true;
+  const startPos = new THREE.Vector3(m14BasePos.x, m14BasePos.y-0.6, m14BasePos.z+0.35);
+  m14Group.position.copy(startPos);
+  m14Group.rotation.set(0.6,0.8,0);
+  let t=0;
+  function anim(){
+    t+=1/60;
+    const f=Math.min(1,t/0.9);
+    m14Group.position.lerpVectors(startPos, m14BasePos, f);
+    m14Group.rotation.x = 0.6*(1-f);
+    m14Group.rotation.y = 0.8*(1-f);
+    if(f<1) requestAnimationFrame(anim);
+    else {
+      Player.hasM14 = true;
+      setCenterMsg('M14 UNLOCKED', 2.2);
+      playBeep(500,0.15,'square',0.5);
+      State.cutsceneLock = false;
+      spawnM14FinalFight();
+    }
+  }
+  anim();
+}
+function spawnM14FinalFight(){
+  spawnM14AmmoPickup(-4,90,30);
+  spawnM14AmmoPickup(4,92,30);
+  const pts=[[-4,86],[4,86],[-3,90],[3,90],[0,83]];
+  const types=['basic','basic','mutant','basic','ranged'];
+  pts.forEach((p,i)=> enemies.push(new Possum(p[0],p[1], types[i], {startAggro:true})) );
+  setCenterMsg('FIGHT YOUR WAY TO THE EXIT', 2.0);
+}
+
+function buildLevel3(){
+  bigFloor(-4,-3, 4,7,   sewerFloorMat, sewerCeilMat);
+  bigFloor(-1.5,7, 1.5,17, sewerFloorMat, sewerCeilMat);
+
+  // Hub A — three exits: dead-end pipe room (west), switch room 1 (east), onward to Hub B (north)
+  bigFloor(-14,17, 14,29, sewerFloorMat, sewerCeilMat);
+  bigFloor(14,21, 26,33,  sewerFloorMat, sewerCeilMat);   // switch room 1 (red lights) — elongated so it loops back in
+  bigFloor(1.5,29, 14,33, sewerFloorMat, sewerCeilMat);   // loop connector back into the main corridor
+  bigFloor(-1.5,29, 1.5,33, sewerFloorMat, sewerCeilMat); // corridor to Hub B
+
+  // Hub B — three exits: switch room 2 (flooded, west), switch room 3 (fan, east), onward to the nest (north)
+  bigFloor(-14,33, 14,45, sewerFloorMat, sewerCeilMat);
+  bigFloor(-26,37,-14,41, sewerFloodMat, sewerCeilMat);   // flooded switch room
+  bigFloor(14,37, 26,41,  sewerFloorMat, sewerCeilMat);   // fan switch room
+  bigFloor(-1.5,45, 1.5,49, sewerFloorMat, sewerCeilMat); // narrow tunnel — "surrounded" encounter
+
+  bigFloor(-16,49, 16,65, sewerFloorMat, sewerCeilMat);   // the nest — biggest normal encounter
+  bigFloor(-1.5,65, 1.5,80, sewerFloorMat, sewerCeilMat); // long tunnel — scripted scout moment
+  bigFloor(3,65, 6,80, sewerFloorMat, sewerCeilMat);      // a second, parallel route around the scout tunnel
+  bigFloor(-8,80, 8,94, sewerFloorMat, sewerCeilMat);     // M14 room + final fight
+  bigFloor(-1.5,94, 1.5,102, sewerFloorMat, sewerCeilMat);
+  bigFloor(-6,102, 6,115, sewerFloorMat, sewerCeilMat);   // exit room
+
+  // --- perimeter walls ---
+  wallSeg(-4,-3,4,-3, sewerWallMat); wallSeg(-4,-3,-4,7, sewerWallMat); wallSeg(4,-3,4,7, sewerWallMat);
+  wallSeg(-4,7,-1.5,7, sewerWallMat); wallSeg(1.5,7,4,7, sewerWallMat);
+  wallSeg(-1.5,7,-1.5,17, sewerWallMat); wallSeg(1.5,7,1.5,17, sewerWallMat);
+
+  wallSeg(-14,17,-1.5,17, sewerWallMat); wallSeg(1.5,17,14,17, sewerWallMat);
+  wallSeg(-14,17,-14,29, sewerWallMat);                                        // west wall — solid, no more dead end
+  wallSeg(14,17,14,21, sewerWallMat); wallSeg(14,25,14,29, sewerWallMat);      // gap = switch room 1 doorway
+  wallSeg(-14,29,-1.5,29, sewerWallMat); wallSeg(1.5,29,14,29, sewerWallMat);  // gap = corridor to Hub B
+
+  wallSeg(14,21,26,21, sewerWallMat);                                          // switch room 1 south
+  wallSeg(14,33,26,33, sewerWallMat);                                          // switch room 1 north
+  wallSeg(26,21,26,33, sewerWallMat);                                          // switch room 1 east
+  // switch room 1's west wall has two gaps (z21-25 to Hub A, z29-33 to the loop connector),
+  // solid only z25-29 in between — already covered by the HubA east-wall cap above
+
+  wallSeg(-1.5,29,-1.5,33, sewerWallMat);
+  // (no east wall here — this is the open loop connection back from switch room 1)
+
+  wallSeg(-14,33,-1.5,33, sewerWallMat); wallSeg(1.5,33,14,33, sewerWallMat);
+  wallSeg(-14,33,-14,37, sewerWallMat); wallSeg(-14,41,-14,45, sewerWallMat);  // gap = flooded room doorway
+  wallSeg(14,33,14,37, sewerWallMat); wallSeg(14,41,14,45, sewerWallMat);     // gap = fan room doorway
+  wallSeg(-14,45,-1.5,45, sewerWallMat); wallSeg(1.5,45,14,45, sewerWallMat); // gap = tunnel onward
+
+  wallSeg(-26,37,-14,37, sewerWallMat); wallSeg(-26,41,-14,41, sewerWallMat); wallSeg(-26,37,-26,41, sewerWallMat);
+  wallSeg(14,37,26,37, sewerWallMat); wallSeg(14,41,26,41, sewerWallMat); wallSeg(26,37,26,41, sewerWallMat);
+
+  wallSeg(-1.5,45,-1.5,49, sewerWallMat); wallSeg(1.5,45,1.5,49, sewerWallMat);
+
+  wallSeg(-16,49,-1.5,49, sewerWallMat); wallSeg(1.5,49,16,49, sewerWallMat);
+  wallSeg(-16,49,-16,65, sewerWallMat); wallSeg(16,49,16,65, sewerWallMat);
+  wallSeg(-16,65,-1.5,65, sewerWallMat); wallSeg(1.5,65,3,65, sewerWallMat); wallSeg(6,65,16,65, sewerWallMat);
+
+  wallSeg(-1.5,65,-1.5,80, sewerWallMat); wallSeg(1.5,65,1.5,80, sewerWallMat);
+  wallSeg(3,65,3,80, sewerWallMat); wallSeg(6,65,6,80, sewerWallMat); // the fork tunnel's own side walls
+
+  wallSeg(-8,80,-1.5,80, sewerWallMat); wallSeg(1.5,80,3,80, sewerWallMat); wallSeg(6,80,8,80, sewerWallMat);
+  wallSeg(-8,80,-8,94, sewerWallMat); wallSeg(8,80,8,94, sewerWallMat);
+  // note: the -1.5..1.5 gap at z=94 is where the dead-end gate sits (locked until 3 switches)
+  wallSeg(-8,94,-1.5,94, sewerWallMat); wallSeg(1.5,94,8,94, sewerWallMat);
+
+  wallSeg(-1.5,94,-1.5,102, sewerWallMat); wallSeg(1.5,94,1.5,102, sewerWallMat);
+
+  wallSeg(-6,102,-1.5,102, sewerWallMat); wallSeg(1.5,102,6,102, sewerWallMat);
+  wallSeg(-6,102,-6,115, sewerWallMat); wallSeg(6,102,6,115, sewerWallMat);
+  wallSeg(-6,115,6,115, sewerWallMat);
+
+  // --- lighting & clutter --- (real point lights kept along the main spine only —
+  // side rooms rely on ambient/hemisphere plus their own switch/recorder/pickup lights,
+  // which keeps this, the biggest level, from stacking up too many dynamic lights at once)
+  addLamp(0,3.6,2); addLamp(0,3.6,12); addLamp(0,3.6,23);
+  addBulb(20,3.6,29);
+  addLamp(0,3.6,39);
+  addBulb(-20,3.6,39); addBulb(20,3.6,39);
+  addLamp(0,3.6,47); addLamp(0,3.6,58); addLamp(0,3.6,72); addLamp(0,3.6,88); addLamp(0,3.6,108);
+  scatterClutter(rootMat, 20, 112, 46, 26);
+  scatterPipes(rustyPipeMat, 15, 112, 18, 24);
+
+  // landmark: the big sewer fan, in switch room 3
+  const fanGroup = new THREE.Group();
+  const housing = new THREE.Mesh(new THREE.TorusGeometry(1.5,0.15,8,20), pipePropMat); fanGroup.add(housing);
+  for(let i=0;i<4;i++){ const blade=new THREE.Mesh(new THREE.BoxGeometry(1.4,0.28,0.05), pipePropMat); blade.rotation.z=i*Math.PI/2; fanGroup.add(blade); }
+  fanGroup.position.set(20,2.2,39); fanGroup.rotation.y = Math.PI/2;
+  levelGroup.add(fanGroup);
+  spinningProps.push(fanGroup);
+
+  // switches — each flush-mounted on an actual wall (not floating in open air)
+  spawnSwitchProp(25.75,25,Math.PI/2);   // switch room 1 — mounted on its east wall
+  spawnSwitchProp(-25.75,39,Math.PI/2);  // flooded room — mounted on its west wall
+  spawnSwitchProp(24,37.25,0);           // fan room — mounted on its north wall, clear of the fan
+  spawnRecorderProp(11,43);
+  spawnM14Pickup(0,88);
+
+  // story clues, engraved directly into solid rock — not in a doorway gap
+  const clue1 = makeTextPlane("THEY'RE NOT MONSTERS.", 3.0, 1.0);
+  clue1.position.set(-13.75, 2, 23); clue1.rotation.y = Math.PI/2;
+  levelGroup.add(clue1);
+  const clue2 = makeTextPlane("HE CALLS THEM FAMILY.", 3.0, 1.0);
+  clue2.position.set(13.75, 2, 35); clue2.rotation.y = -Math.PI/2;
+  levelGroup.add(clue2);
+}
+
+// ---------- LEVEL 4: THE AFTERMATH ----------
+function spawnTerminalProp(x,z,rotationY,onUse){
+  const deskMat = labDeskMat;
+  const desk = new THREE.Mesh(new THREE.BoxGeometry(0.7,0.9,0.5), deskMat);
+  desk.position.set(x,0.45,z); desk.rotation.y=rotationY;
+  levelGroup.add(desk);
+  const screenMat = new THREE.MeshStandardMaterial({color:0x113322, emissive:0x224433, emissiveIntensity:0.8});
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.35,0.05), screenMat);
+  const off = new THREE.Vector3(0,0.55,0.24).applyEuler(new THREE.Euler(0,rotationY,0));
+  screen.position.set(x+off.x,0.9,z+off.z); screen.rotation.y=rotationY;
+  levelGroup.add(screen);
+  const termLight = new THREE.PointLight(0x66ffaa,0.5,3,2); termLight.position.set(x,1.0,z); levelGroup.add(termLight);
+  pulsingLights.push({light:termLight, base:0.5, amp:0.25, speed:1.6, active:true});
+  interactables.push({ pos:[x,z], radius:1.6, label:'ACCESS TERMINAL', used:false, action: onUse });
+  return screen;
+}
+function buildLevel4(){
+  bigFloor(-4,-3, 4,9,   labFloorMat, labCeilMat);
+  bigFloor(-1.5,9, 1.5,19, labFloorMat, labCeilMat);
+
+  bigFloor(-10,19, 10,33, labFloorMat, labCeilMat);   // Hub 1
+  bigFloor(-18,23,-10,27, labFloorMat, labCeilMat);   // Hub1 west alcove — dead end, reward
+  bigFloor(10,23, 18,27, labFloorMat, labCeilMat);    // Hub1 east alcove — terminal 1
+
+  bigFloor(-1.5,33, 1.5,39, labFloorMat, labCeilMat);
+
+  bigFloor(-12,39, 12,51, labFloorMat, labCeilMat);   // Hub 2
+  bigFloor(-24,43,-12,57, labFloorMat, labCeilMat);   // Hub2 west branch — loops back into the corridor beyond
+  bigFloor(12,43, 22,47, labFloorMat, labCeilMat);    // Hub2 east alcove — dead end, reward
+  bigFloor(-12,51,-1.5,55, labFloorMat, labCeilMat);  // loop connector, back into the main corridor
+  bigFloor(-1.5,51, 1.5,57, labFloorMat, labCeilMat); // Hub2's own north corridor
+
+  bigFloor(-10,57, 10,73, labFloorMat, labCeilMat);   // Hub 3
+  bigFloor(-20,63,-10,67, labFloorMat, labCeilMat);   // Hub3 west alcove — terminal 2
+  bigFloor(10,63, 20,67, labFloorMat, labCeilMat);    // Hub3 east alcove — dead end, reward
+
+  bigFloor(-1.5,73, 1.5,79, labFloorMat, labCeilMat);
+
+  bigFloor(-12,79, 12,95, labFloorMat, labCeilMat);   // Hub 4
+  bigFloor(-22,85,-12,89, labFloorMat, labCeilMat);   // Hub4 west alcove — a small ambush, then a reward
+  bigFloor(12,85, 22,89, labFloorMat, labCeilMat);    // Hub4 east alcove — dead end, reward
+
+  bigFloor(-1.5,95, 1.5,101, labFloorMat, labCeilMat);
+
+  bigFloor(-14,101, 14,117, labFloorMat, labCeilMat);   // observation room — the big reveal
+  bigFloor(-1.5,117, 1.5,133, labFloorMat, labCeilMat); // chase corridor 1
+  bigFloor(-12,133, 12,147, labFloorMat, labCeilMat);   // chase room — multiple entrances
+  bigFloor(-1.5,147, 1.5,163, labFloorMat, labCeilMat); // chase corridor 2 — spitters
+  bigFloor(-1.5,163, 1.5,173, labFloorMat, labCeilMat); // final corridor
+  bigFloor(-6,173, 6,186, labFloorMat, labCeilMat);     // exit room
+
+  // --- walls ---
+  wallSeg(-4,-3,4,-3, labWallMat); wallSeg(-4,-3,-4,9, labWallMat); wallSeg(4,-3,4,9, labWallMat);
+  wallSeg(-4,9,-1.5,9, labWallMat); wallSeg(1.5,9,4,9, labWallMat);
+  wallSeg(-1.5,9,-1.5,19, labWallMat); wallSeg(1.5,9,1.5,19, labWallMat);
+
+  wallSeg(-10,19,-1.5,19, labWallMat); wallSeg(1.5,19,10,19, labWallMat);
+  wallSeg(-10,19,-10,23, labWallMat); wallSeg(-10,27,-10,33, labWallMat);
+  wallSeg(10,19,10,23, labWallMat); wallSeg(10,27,10,33, labWallMat);
+  wallSeg(-10,33,-1.5,33, labWallMat); wallSeg(1.5,33,10,33, labWallMat);
+  wallSeg(-18,23,-10,23, labWallMat); wallSeg(-18,27,-10,27, labWallMat); wallSeg(-18,23,-18,27, labWallMat);
+  wallSeg(10,23,18,23, labWallMat); wallSeg(10,27,18,27, labWallMat); wallSeg(18,23,18,27, labWallMat);
+
+  wallSeg(-1.5,33,-1.5,39, labWallMat); wallSeg(1.5,33,1.5,39, labWallMat);
+
+  wallSeg(-12,39,-1.5,39, labWallMat); wallSeg(1.5,39,12,39, labWallMat);
+  wallSeg(-12,39,-12,43, labWallMat); wallSeg(-12,47,-12,51, labWallMat);
+  wallSeg(12,39,12,43, labWallMat); wallSeg(12,47,12,51, labWallMat);
+  wallSeg(-12,51,-1.5,51, labWallMat); wallSeg(1.5,51,12,51, labWallMat);
+  wallSeg(12,43,22,43, labWallMat); wallSeg(12,47,22,47, labWallMat); wallSeg(22,43,22,47, labWallMat);
+
+  wallSeg(-24,43,-12,43, labWallMat); wallSeg(-24,57,-12,57, labWallMat); wallSeg(-24,43,-24,57, labWallMat);
+  wallSeg(-12,55,-12,57, labWallMat); // solid cap between the loop connector gap and the north wall
+  wallSeg(-12,55,-1.5,55, labWallMat); // loop connector's own north wall
+  wallSeg(-1.5,55,-1.5,57, labWallMat); wallSeg(1.5,51,1.5,57, labWallMat); // corridor2 sides (west open to the loop for z51-55)
+
+  wallSeg(-10,57,-1.5,57, labWallMat); wallSeg(1.5,57,10,57, labWallMat);
+  wallSeg(-10,57,-10,63, labWallMat); wallSeg(-10,67,-10,73, labWallMat);
+  wallSeg(10,57,10,63, labWallMat); wallSeg(10,67,10,73, labWallMat);
+  wallSeg(-10,73,-1.5,73, labWallMat); wallSeg(1.5,73,10,73, labWallMat);
+  wallSeg(-20,63,-10,63, labWallMat); wallSeg(-20,67,-10,67, labWallMat); wallSeg(-20,63,-20,67, labWallMat);
+  wallSeg(10,63,20,63, labWallMat); wallSeg(10,67,20,67, labWallMat); wallSeg(20,63,20,67, labWallMat);
+
+  wallSeg(-1.5,73,-1.5,79, labWallMat); wallSeg(1.5,73,1.5,79, labWallMat);
+
+  wallSeg(-12,79,-1.5,79, labWallMat); wallSeg(1.5,79,12,79, labWallMat);
+  wallSeg(-12,79,-12,85, labWallMat); wallSeg(-12,89,-12,95, labWallMat);
+  wallSeg(12,79,12,85, labWallMat); wallSeg(12,89,12,95, labWallMat);
+  wallSeg(-12,95,-1.5,95, labWallMat); wallSeg(1.5,95,12,95, labWallMat);
+  wallSeg(-22,85,-12,85, labWallMat); wallSeg(-22,89,-12,89, labWallMat); wallSeg(-22,85,-22,89, labWallMat);
+  wallSeg(12,85,22,85, labWallMat); wallSeg(12,89,22,89, labWallMat); wallSeg(22,85,22,89, labWallMat);
+
+  wallSeg(-1.5,95,-1.5,101, labWallMat); wallSeg(1.5,95,1.5,101, labWallMat);
+
+  wallSeg(-14,101,-1.5,101, labWallMat); wallSeg(1.5,101,14,101, labWallMat);
+  wallSeg(-14,101,-14,117, labWallMat); wallSeg(14,101,14,117, labWallMat);
+  wallSeg(-14,117,-1.5,117, labWallMat); wallSeg(1.5,117,14,117, labWallMat);
+
+  wallSeg(-1.5,117,-1.5,133, labWallMat); wallSeg(1.5,117,1.5,133, labWallMat);
+
+  wallSeg(-12,133,-1.5,133, labWallMat); wallSeg(1.5,133,12,133, labWallMat);
+  wallSeg(-12,133,-12,147, labWallMat); wallSeg(12,133,12,147, labWallMat);
+  wallSeg(-12,147,-1.5,147, labWallMat); wallSeg(1.5,147,12,147, labWallMat);
+
+  wallSeg(-1.5,147,-1.5,163, labWallMat); wallSeg(1.5,147,1.5,163, labWallMat);
+  wallSeg(-1.5,163,-1.5,173, labWallMat); wallSeg(1.5,163,1.5,173, labWallMat);
+
+  wallSeg(-6,173,-1.5,173, labWallMat); wallSeg(1.5,173,6,173, labWallMat);
+  wallSeg(-6,173,-6,186, labWallMat); wallSeg(6,173,6,186, labWallMat);
+  wallSeg(-6,186,6,186, labWallMat);
+
+  // the observation window — a big glass pane over the containment area, breaks on the reveal
+  const glass = new THREE.Mesh(new THREE.PlaneGeometry(8,3), labGlassMat);
+  glass.position.set(0,2,116.8);
+  levelGroup.add(glass);
+  levelGroup.userData.observationGlass = glass;
+
+  // support pillars — break up the straight line-of-sight through every hub so the main
+  // path itself requires real navigation, not just holding forward
+  spawnPillar(-4,24); spawnPillar(4,28);
+  spawnPillar(-4,44); spawnPillar(5,47); spawnPillar(0,41);
+  spawnPillar(-4,62); spawnPillar(4,67); spawnPillar(0,70);
+  spawnPillar(-4,84); spawnPillar(5,89); spawnPillar(0,92);
+  spawnPillar(-9,103); spawnPillar(9,103); spawnPillar(-9,108); spawnPillar(9,108);
+
+  // desks scattered through every hub room for lab dressing, some with a little monitor on top
+  const deskSpots = [
+    [-5,22],[5,30],[-6,45],[6,41],[15,44],[-16,50],[-5,60],[6,68],[-15,65],
+    [-5,82],[6,92],[16,86],[-16,87],[0,109],[0,141],
+  ];
+  for(const p of deskSpots){
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(1.4,0.8,0.6), labDeskMat);
+    desk.position.set(p[0],0.4,p[1]); levelGroup.add(desk);
+    if(Math.random()<0.5){
+      const mon = new THREE.Mesh(new THREE.BoxGeometry(0.5,0.35,0.35), new THREE.MeshStandardMaterial({color:0x113322, emissive:0x224433, emissiveIntensity:0.6}));
+      mon.position.set(p[0],0.98,p[1]); levelGroup.add(mon);
+    }
+  }
+
+  // real lights only at the main hubs/rooms — everywhere else gets a cheap visual-only bulb,
+  // keeping the dynamic light count low for mobile performance on this, the longest level
+  addLamp(0,3.6,3); addLamp(0,3.6,26); addLamp(0,3.6,45); addLamp(0,3.6,66); addLamp(0,3.6,88);
+  addLamp(0,3.6,109); addLamp(0,3.6,140); addLamp(0,3.6,168); addLamp(0,3.6,180);
+  addBulb(-14,3.6,25); addBulb(14,3.6,25); addBulb(-18,3.6,50); addBulb(17,3.6,45);
+  addBulb(-15,3.6,65); addBulb(15,3.6,65); addBulb(-17,3.6,87); addBulb(17,3.6,87);
+  addBulb(0,3.6,16); addBulb(0,3.6,125); addBulb(0,3.6,155);
+  scatterClutter(rootMat, 20, 183, 26, 20);
+  scatterVials(20, 183, 26, 22);
+
+  spawnTerminalProp(14,25,-Math.PI/2, ()=>{
+    State.cutsceneLock = true;
+    lerpCameraTo(Player.yaw, -0.1, 0.3, ()=>{
+      showSubtitleSequence([
+        {text:'SUBJECT COUNT'}, {text:'12'}, {text:'24'}, {text:'47'}, {text:'ERROR'}, {text:'COUNT UNAVAILABLE'},
+      ], ()=>{ State.cutsceneLock=false; });
+    });
+  });
+  spawnBucksPickup(-14,25,18);
+
+  spawnTerminalProp(-15,65,Math.PI/2, ()=>{
+    State.cutsceneLock = true;
+    ensureAudio(); playBeep(2000,0.2,'sawtooth',0.3);
+    lerpCameraTo(Player.yaw, -0.1, 0.3, ()=>{
+      showSubtitleSequence([
+        {text:'UNKNOWN: "The power should never have been restored."'},
+        {text:'"If you\u2019re seeing this…"'},
+        {text:'"You\u2019re already too late."'},
+        {text:'UNKNOWN: "Run."'},
+      ], ()=>{ playBeep(2000,0.15,'sawtooth',0.25); State.cutsceneLock=false; });
+    });
+  });
+  spawnHealthPickup(15,65);
+
+  // loop branch and remaining alcoves — rewards for exploring off the main path
+  spawnBucksPickup(-18,50,26);
+  spawnM14AmmoPickup(-18,47,20);
+  spawnBucksPickup(17,45,16);
+  spawnBucksPickup(17,87,20);
+
+  spawnM14AmmoPickup(0,45,20);
+  spawnM14AmmoPickup(0,109,25);
+  spawnM14AmmoPickup(0,141,25);
+  spawnM14AmmoPickup(0,168,20);
+
+  const clue1 = makeTextPlane("EMPTY CAGES. SCRATCH MARKS ON EVERY DOOR.", 3.6, 1.0);
+  clue1.position.set(0, 2, 100.75); clue1.rotation.y = Math.PI;
+  levelGroup.add(clue1);
+}
+
+// ---------- DEAD-END GATE (blocks a section until its wave is cleared, then collapses) ----------
+let gateChunks = [];
+let gateCollider = null;
+function spawnGateWall(gateZ, gateX=0){
+  gateChunks = []; gateCollider = null;
+  if(gateZ==null) return;
+  const cols=4, rows=3, totalW=3.3, totalH=CEIL_Y;
+  const w=totalW/cols, h=totalH/rows;
+  const mat = new THREE.MeshStandardMaterial({color:0x3a3327, roughness:1});
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const chunk = box(w*0.94, h*0.94, 0.42, mat);
+      chunk.position.set(gateX - totalW/2 + w*(c+0.5), h*(r+0.5), gateZ);
+      levelGroup.add(chunk);
+      gateChunks.push(chunk);
+    }
+  }
+  gateCollider = {min:new THREE.Vector3(gateX-1.5-0.15,0,gateZ-0.25), max:new THREE.Vector3(gateX+1.5+0.15,CEIL_Y,gateZ+0.25)};
+  colliders.push(gateCollider);
+}
+function animateGateChunk(chunk, vel, angVel){
+  let t=0;
+  function step(){
+    t+=1/60;
+    vel.y -= 9/60;
+    chunk.position.addScaledVector(vel,1/60);
+    chunk.rotation.x += angVel.x/60; chunk.rotation.y += angVel.y/60; chunk.rotation.z += angVel.z/60;
+    if(t<2.4 && chunk.position.y>-4) requestAnimationFrame(step);
+    else levelGroup.remove(chunk);
+  }
+  step();
+}
+function spawnDustCloud(pos){
+  if(State.settings.reduceParticles) return;
+  const parts=[];
+  for(let i=0;i<14;i++){
+    const mat=new THREE.MeshStandardMaterial({color:0x8a7d5e, roughness:1, transparent:true, opacity:0.85});
+    const p=new THREE.Mesh(new THREE.SphereGeometry(0.12+Math.random()*0.1,6,6), mat);
+    p.position.copy(pos);
+    scene.add(p);
+    parts.push({mesh:p, vel:new THREE.Vector3((Math.random()-0.5)*2.5, Math.random()*1.2, (Math.random()-0.5)*2.5)});
+  }
+  let t=0;
+  function step(){
+    t+=1/60;
+    for(const pt of parts){ pt.vel.y -= 2/60; pt.mesh.position.addScaledVector(pt.vel,1/60); pt.mesh.material.opacity = Math.max(0,0.85-t/1.2); }
+    if(t<1.2) requestAnimationFrame(step); else for(const pt of parts) scene.remove(pt.mesh);
+  }
+  step();
+}
+function collapseGate(){
+  setCenterMsg('THE WALL GIVES WAY', 2.0);
+  if(State.settings.shake) shakeAmount = Math.max(shakeAmount, 0.4);
+  playBeep(55,0.5,'sawtooth',1);
+  const idx = colliders.indexOf(gateCollider);
+  if(idx>-1) colliders.splice(idx,1);
+  gateCollider = null;
+  const chunksToDrop = gateChunks; gateChunks = [];
+  const dustPos = chunksToDrop.length ? chunksToDrop[0].position.clone() : new THREE.Vector3(0,1.5,0);
+  for(const chunk of chunksToDrop){
+    const vel = new THREE.Vector3((Math.random()-0.5)*2.2, 1+Math.random()*1.5, 1+Math.random()*1.5);
+    const angVel = new THREE.Vector3((Math.random()-0.5)*6,(Math.random()-0.5)*6,(Math.random()-0.5)*6);
+    animateGateChunk(chunk, vel, angVel);
+  }
+  spawnDustCloud(dustPos);
+}
+
+// ---------- RAYCASTER ----------
+const raycaster = new THREE.Raycaster();
+
+// ---------- ENEMIES ----------
+const enemies = [];
+function easeOutBack(t){
+  const c1=1.70158, c3=c1+1;
+  return 1 + c3*Math.pow(t-1,3) + c1*Math.pow(t-1,2);
+}
+function spawnDirtBurst(x,z){
+  if(State.settings.reduceParticles) return;
+  const parts=[];
+  for(let i=0;i<7;i++){
+    const mat = new THREE.MeshStandardMaterial({color:0x53442c, roughness:1, transparent:true, opacity:1});
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.08,0.08,0.08), mat);
+    p.position.set(x+(Math.random()-0.5)*0.4, 0.05, z+(Math.random()-0.5)*0.4);
+    scene.add(p);
+    parts.push({mesh:p, vel:new THREE.Vector3((Math.random()-0.5)*1.6, 1.8+Math.random()*1.4, (Math.random()-0.5)*1.6)});
+  }
+  let t=0;
+  function step(){
+    t+=1/60;
+    for(const pt of parts){ pt.vel.y -= 9/60; pt.mesh.position.addScaledVector(pt.vel, 1/60); pt.mesh.material.opacity = Math.max(0,1-t/0.55); }
+    if(t<0.55) requestAnimationFrame(step);
+    else for(const pt of parts) scene.remove(pt.mesh);
+  }
+  step();
+}
+function spawnExplosionFX(pos){
+  if(State.settings.reduceParticles) return;
+  const parts=[];
+  for(let i=0;i<10;i++){
+    const mat = new THREE.MeshStandardMaterial({color:0xffaa33, emissive:0xff5500, emissiveIntensity:1, transparent:true, opacity:1});
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.08,6,6), mat);
+    p.position.copy(pos);
+    scene.add(p);
+    parts.push({mesh:p, vel:new THREE.Vector3((Math.random()-0.5)*4, Math.random()*3, (Math.random()-0.5)*4)});
+  }
+  let t=0;
+  function step(){
+    t+=1/60;
+    for(const pt of parts){ pt.vel.y -= 6/60; pt.mesh.position.addScaledVector(pt.vel,1/60); pt.mesh.material.opacity = Math.max(0,1-t/0.5); }
+    if(t<0.5) requestAnimationFrame(step);
+    else for(const pt of parts) scene.remove(pt.mesh);
+  }
+  step();
+}
+function makePossumMesh(scale=1, elite=false, mangy=false, sprinter=false){
+  const g = new THREE.Group();
+  const furColor = mangy ? 0x232017 : sprinter ? 0x6b4423 : (elite?0x2a2a20:0x4a4436);
+  const furMat = new THREE.MeshStandardMaterial({color:furColor, roughness:1});
+  const eyeColor = mangy ? 0x33ff5a : sprinter ? 0xaa55ff : (elite?0xff3333:0xcccc33);
+  const eyeEmissive = mangy ? 0x22dd44 : sprinter ? 0x8833dd : (elite?0xff2222:0xaaaa22);
+  const eyeMat = new THREE.MeshStandardMaterial({color:eyeColor, emissive: eyeEmissive, emissiveIntensity: mangy?2:1.5});
+  // Spitter (mangy) gets a hunched, thinner body and a bigger head — reads as a different
+  // creature at a glance while staying big enough to hit reliably.
+  const bodyDims = mangy ? [0.44,0.34,0.72] : [0.6,0.5,0.9];
+  const bodyY = mangy ? 0.36 : 0.5;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(...bodyDims), furMat); body.position.y=bodyY;
+  if(mangy) body.rotation.x = 0.22; // hunched posture
+  g.add(body);
+  const headDims = mangy ? [0.42,0.36,0.4] : [0.4,0.35,0.4];
+  const headY = mangy ? 0.58 : 0.75;
+  const head = new THREE.Mesh(new THREE.BoxGeometry(...headDims), furMat); head.position.set(0,headY,mangy?0.42:0.55); g.add(head);
+  const earGeo = new THREE.ConeGeometry(0.12,0.2,6);
+  const earL = new THREE.Mesh(earGeo, furMat); earL.position.set(-0.15,headY+0.23,mangy?0.42:0.55); g.add(earL);
+  const earR = new THREE.Mesh(earGeo, furMat); earR.position.set(0.15,headY+0.23,mangy?0.42:0.55); g.add(earR);
+  const eyeSize = mangy ? 0.075 : 0.05; // large eyes on the spitter
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(eyeSize,6,6), eyeMat); eyeL.position.set(-0.12,headY+0.02,(mangy?0.42:0.55)+0.2); g.add(eyeL);
+  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(eyeSize,6,6), eyeMat); eyeR.position.set(0.12,headY+0.02,(mangy?0.42:0.55)+0.2); g.add(eyeR);
+  const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.06,mangy?1.05:0.9,6), furMat);
+  tail.rotation.x = Math.PI/2.4; tail.position.set(0,mangy?0.3:0.4,mangy?-0.55:-0.7); g.add(tail);
+  if(mangy){
+    // a distinctive dark mouth/muzzle, plus a couple of patchy bald spots for the sickly look
+    const mouthMat = new THREE.MeshStandardMaterial({color:0x120e0a, roughness:1});
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.16,0.05,0.06), mouthMat);
+    mouth.position.set(0, headY-0.13, 0.42+0.22); g.add(mouth);
+    const patchMat = new THREE.MeshStandardMaterial({color:0x5a4f3a, roughness:1});
+    const patch1 = new THREE.Mesh(new THREE.CircleGeometry(0.08,8), patchMat); patch1.position.set(0.221,0.42,0.1); patch1.rotation.y=Math.PI/2; g.add(patch1);
+    const patch2 = new THREE.Mesh(new THREE.CircleGeometry(0.06,8), patchMat); patch2.position.set(-0.221,0.3,-0.15); patch2.rotation.y=-Math.PI/2; g.add(patch2);
+  }
+  const legGeo = new THREE.BoxGeometry(0.12,0.35,0.12);
+  const legs=[];
+  [[-0.2,-0.28,0.3],[0.2,-0.28,0.3],[-0.2,-0.28,-0.3],[0.2,-0.28,-0.3]].forEach(p=>{
+    const leg=new THREE.Mesh(legGeo,furMat); leg.position.set(p[0],p[1]+0.5,p[2]); g.add(leg); legs.push(leg);
+  });
+  g.userData.legs = legs;
+  g.userData.body = body;
+  g.scale.setScalar(scale);
+  return g;
+}
+
+// ---------- ACID PROJECTILES (spitter possum attack) ----------
+const acidProjectiles = [];
+function spawnAcidProjectile(fromPos, targetPos){
+  const mat = new THREE.MeshStandardMaterial({color:0x8fdc4a, emissive:0x6fbf2a, emissiveIntensity:1});
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.1,6,6), mat);
+  mesh.position.set(fromPos.x, 0.9, fromPos.z);
+  scene.add(mesh);
+  const dir = new THREE.Vector3(targetPos.x-fromPos.x, 0, targetPos.z-fromPos.z);
+  const dist = Math.max(0.5, dir.length());
+  dir.normalize();
+  const speed = 7;
+  const vel = dir.multiplyScalar(speed);
+  vel.y = Math.min(4, dist*0.32);
+  acidProjectiles.push({mesh, vel, life:0});
+  playBeep(500,0.08,'sine',0.4);
+}
+function spawnAcidSplat(pos){
+  if(State.settings.reduceParticles) return;
+  const parts=[];
+  for(let i=0;i<8;i++){
+    const mat = new THREE.MeshStandardMaterial({color:0x8fdc4a, emissive:0x6fbf2a, emissiveIntensity:1, transparent:true, opacity:1});
+    const p = new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), mat);
+    p.position.copy(pos);
+    scene.add(p);
+    parts.push({mesh:p, vel:new THREE.Vector3((Math.random()-0.5)*2.4, Math.random()*1.6, (Math.random()-0.5)*2.4)});
+  }
+  let t=0;
+  function step(){
+    t+=1/60;
+    for(const pt of parts){ pt.vel.y -= 7/60; pt.mesh.position.addScaledVector(pt.vel,1/60); pt.mesh.material.opacity = Math.max(0,1-t/0.4); }
+    if(t<0.4) requestAnimationFrame(step); else for(const pt of parts) scene.remove(pt.mesh);
+  }
+  step();
+}
+function updateAcidProjectiles(dt){
+  for(let i=acidProjectiles.length-1;i>=0;i--){
+    const p = acidProjectiles[i];
+    p.vel.y -= 9*dt;
+    p.mesh.position.addScaledVector(p.vel, dt);
+    p.life += dt;
+    // Hit test is horizontal-only (treat the player as a vertical column) — the old 3D
+    // check also compared against eye height, so a chest-height glob almost always missed.
+    const dx=Player.pos.x-p.mesh.position.x, dz=Player.pos.z-p.mesh.position.z;
+    const distToPlayer = Math.hypot(dx,dz);
+    const heightOk = p.mesh.position.y>-0.5 && p.mesh.position.y<Player.height+0.6;
+    if(distToPlayer<0.75 && heightOk){
+      damagePlayer(14);
+      spawnAcidSplat(p.mesh.position.clone());
+      scene.remove(p.mesh); acidProjectiles.splice(i,1); continue;
+    }
+    if(p.mesh.position.y<0 || p.life>3 || collidesWithWalls(p.mesh.position.x,p.mesh.position.z,0.05)){
+      spawnAcidSplat(p.mesh.position.clone());
+      scene.remove(p.mesh); acidProjectiles.splice(i,1);
+    }
+  }
+}
+
+class Possum{
+  constructor(x,z,type='basic', opts={}){
+    this.type = type;
+    this.isRanged = type==='ranged';
+    this.isSprinter = type==='sprinter';
+    this.startAggro = !!opts.startAggro; // spawns and goes straight to chasing, skipping idle/patrol
+    this.scripted = !!opts.scripted;     // used only by the Level 3 scripted "scout" moment
+    this.hp = type==='mutant'?70 : type==='boss'?560 : this.isRanged?46 : 36;
+    this.maxHp = this.hp;
+    this.dead=false;
+    this.state='spawning';
+    this.speed = type==='mutant'?1.6 : type==='boss'?1.3 : this.isRanged?2.2 : this.isSprinter?6.0 : 2.6;
+    this.attackCD=0;
+    this.attackRange = type==='boss'?2.4 : this.isRanged?9 : 1.1;
+    this.damage = type==='mutant'?18 : type==='boss'?26 : this.isRanged?10 : 8;
+    this.stateT=0; this.spawnT=0; this.walkCycle=0;
+    this.wanderTarget=new THREE.Vector3(x,0,z);
+    const scale = type==='mutant'?1.35 : type==='boss'?2.6 : this.isRanged?0.72 : 1;
+    this.mesh = makePossumMesh(scale, type==='mutant'||type==='boss', this.isRanged, this.isSprinter);
+    this.mesh.position.set(x,-1.3,z);
+    scene.add(this.mesh);
+    this.pos = this.mesh.position;
+    this.telegraph=false;
+    this.hurtFlashT=0;
+    if(type==='boss'){
+      this.bossPhase2 = false;   // set true past 50% HP lost
+      this.summoned = false;    // the one-time summon at 50% HP
+      this.bossState = 'decide';
+      this.bossTimer = 1.2;     // brief pause before the boss does anything, right after it emerges
+      this.bossMoveDir = new THREE.Vector3();
+      this.bossRepositionT = 0;
+      this.telegraphMesh = null;
+    }
+    spawnDirtBurst(x,z);
+  }
+  takeDamage(dmg){
+    if(this.dead || this.state==='spawning') return;
+    this.hp -= dmg;
+    this.hurtFlashT = 0.12;
+    flashHit();
+    if(this.hp<=0){ this.die(); }
+    else if(this.type!=='boss' && this.state!=='attack'){ this.state='chase'; }
+  }
+  die(){
+    this.dead=true; this.state='dead';
+    State.kills++;
+    const dropBucks = this.type==='boss'? (75+Math.floor(Math.random()*10)) : (3+Math.floor(Math.random()*5));
+    spawnBucksPickup(this.pos.x, this.pos.z, dropBucks);
+    if(Math.random()<0.18 && this.type!=='boss') spawnHealthPickup(this.pos.x, this.pos.z);
+    if(this.telegraphMesh){ scene.remove(this.telegraphMesh); this.telegraphMesh=null; }
+    const startY = this.mesh.position.y;
+    let t=0;
+    const anim = ()=>{
+      t+=1/60;
+      this.mesh.position.y = startY - t*0.6;
+      this.mesh.rotation.z = Math.min(t*2,1.4);
+      if(t<1) requestAnimationFrame(anim);
+      else { scene.remove(this.mesh); const idx=enemies.indexOf(this); if(idx>-1) enemies.splice(idx,1);
+        if(this.type==='boss'){ onBossDefeated(); } }
+    };
+    anim();
+    if(this.type==='boss'){ State.bossActive=false; }
+  }
+  update(dt, playerPos){
+    if(this.dead) return;
+
+    if(this.state==='spawning'){
+      this.spawnT += dt;
+      const dur = 0.55;
+      const t = Math.min(1, this.spawnT/dur);
+      this.pos.y = THREE.MathUtils.lerp(-1.3, 0, easeOutBack(t));
+      this.mesh.rotation.x = (1-t)*0.4;
+      if(t>=1){
+        this.pos.y=0; this.mesh.rotation.x=0; this.stateT=0;
+        this.state = this.scripted ? 'scout_wait' : (this.startAggro ? 'chase' : 'idle');
+      }
+      return;
+    }
+
+    const toPlayer = new THREE.Vector3().subVectors(playerPos,this.pos); toPlayer.y=0;
+    const dist = toPlayer.length();
+    this.stateT+=dt;
+
+    if(this.type==='boss'){ this.updateBoss(dt, playerPos, toPlayer, dist); return; }
+
+    // Every possum runs its own independent state machine and cooldown, so several
+    // of them naturally chase and attack at the same time instead of taking turns.
+    if(this.state==='idle' || this.state==='patrol'){
+      if(dist < (this.type==='boss'?14:this.isRanged?14:10) ){ this.state='chase'; this.stateT=0; }
+      else {
+        if(this.stateT>3){ this.wanderTarget.set(this.pos.x+(Math.random()-0.5)*3,0,this.pos.z+(Math.random()-0.5)*3); this.stateT=0; }
+        const wd = new THREE.Vector3().subVectors(this.wanderTarget,this.pos); wd.y=0;
+        if(wd.length()>0.2){ wd.normalize(); this.moveTry(wd, this.speed*0.3, dt); this.facePos(this.wanderTarget); }
+        this.state='patrol';
+      }
+    } else if(this.state==='chase'){
+      if(dist > (this.type==='boss'?20:this.isRanged?18:16)){ this.state='idle'; this.stateT=0; }
+      else if(this.isRanged){
+        if(dist < 4.5){ // too close — bail out and put distance between itself and the player
+          const away = toPlayer.clone().negate().normalize();
+          this.moveTry(away, this.speed*1.35, dt);
+          this.facePos(playerPos);
+        } else if(dist > 8.5){
+          toPlayer.normalize(); this.moveTry(toPlayer, this.speed, dt); this.facePos(playerPos);
+        } else {
+          this.state='attack'; this.stateT=0; this.attackCD=1.4; this.telegraph=true;
+        }
+      } else if(dist < this.attackRange){
+        this.state='attack'; this.stateT=0; this.attackCD=this.type==='boss'?1.1:0.3; this.telegraph=true;
+      } else{
+        toPlayer.normalize();
+        this.moveTry(toPlayer, this.speed, dt);
+        this.facePos(playerPos);
+      }
+    } else if(this.state==='attack'){
+      // a ranged possum that gets rushed mid-windup bails immediately instead of
+      // finishing its attack point-blank
+      if(this.isRanged && dist < 4.5){ this.telegraph=false; this.state='chase'; this.stateT=0; }
+      else {
+      this.facePos(playerPos);
+      this.attackCD-=dt;
+      if(this.attackCD<=0){
+        if(this.isRanged){ spawnAcidProjectile(this.pos.clone(), playerPos.clone()); }
+        else if(dist < this.attackRange+0.6){ damagePlayer(this.damage); }
+        this.telegraph=false;
+        this.state='chase'; this.stateT=0;
+      }
+      }
+    } else if(this.state==='scout_wait'){
+      // scripted Level 3 moment: stands and looks at the player, doesn't attack, then flees
+      this.facePos(playerPos);
+      if(this.stateT>2.0){ this.state='scout_flee'; this.stateT=0; }
+    } else if(this.state==='scout_flee'){
+      const away = toPlayer.clone().negate().normalize();
+      this.moveTry(away, this.speed*1.4, dt);
+      this.facePos(new THREE.Vector3(this.pos.x+away.x, this.pos.y, this.pos.z+away.z));
+      if(this.stateT>3.5){
+        this.dead=true; scene.remove(this.mesh);
+        const idx=enemies.indexOf(this); if(idx>-1) enemies.splice(idx,1);
+        return;
+      }
+    } else if(this.state==='lured'){
+      // Possum Bomb: drop everything and head for the device instead of the player
+      if(!this.luredTarget){ this.state='chase'; this.stateT=0; }
+      else{
+        const dx=this.luredTarget.x-this.pos.x, dz=this.luredTarget.z-this.pos.z;
+        const d = Math.hypot(dx,dz);
+        if(d>0.6){ this.moveTry(new THREE.Vector3(dx/d,0,dz/d), this.speed, dt); this.facePos(this.luredTarget); }
+        else this.facePos(this.luredTarget);
+      }
+    }
+    if(this.hurtFlashT>0){ this.hurtFlashT-=dt; this.mesh.children[0].material.emissive = new THREE.Color(0xff0000); this.mesh.children[0].material.emissiveIntensity=0.6; }
+    else if(this.mesh.children[0].material.emissiveIntensity) { this.mesh.children[0].material.emissiveIntensity = 0; }
+
+    const legs = this.mesh.userData.legs, body = this.mesh.userData.body;
+    const moving = (this.state==='patrol' || this.state==='chase' || this.state==='scout_flee' || this.state==='lured');
+    if(moving){
+      this.walkCycle += dt*this.speed*3.1;
+      const swing = Math.sin(this.walkCycle)*0.5;
+      legs[0].rotation.x = swing; legs[3].rotation.x = swing;
+      legs[1].rotation.x = -swing; legs[2].rotation.x = -swing;
+      body.position.y = 0.5 + Math.abs(Math.sin(this.walkCycle))*0.035;
+    } else {
+      legs.forEach(l=>{ l.rotation.x *= 0.8; });
+      body.position.y += (0.5-body.position.y)*0.2;
+    }
+  }
+  moveTry(dir, speed, dt){
+    const stepX = dir.x*speed*dt, stepZ = dir.z*speed*dt;
+    const nx = this.pos.x+stepX, nz = this.pos.z+stepZ;
+    const xOpen = !collidesWithWalls(nx, this.pos.z, 0.4) && !collidesWithPossums(nx, this.pos.z, 0.65, this);
+    const zOpen = !collidesWithWalls(this.pos.x, nz, 0.4) && !collidesWithPossums(this.pos.x, nz, 0.65, this);
+    if(xOpen) this.pos.x = nx;
+    if(zOpen) this.pos.z = nz;
+    if(!xOpen && !zOpen && !collidesWithWalls(nx,nz,0.4)){
+      // blocked by another possum specifically (walls are clear here) — sidestep around it
+      const side = new THREE.Vector3(-dir.z, 0, dir.x);
+      for(const s of [1,-1]){
+        const sx = this.pos.x + side.x*s*speed*dt, sz = this.pos.z + side.z*s*speed*dt;
+        if(!collidesWithWalls(sx,sz,0.4) && !collidesWithPossums(sx,sz,0.55,this)){ this.pos.x=sx; this.pos.z=sz; break; }
+      }
+    }
+  }
+  facePos(target){
+    const dx = target.x-this.pos.x, dz = target.z-this.pos.z;
+    this.mesh.rotation.y = Math.atan2(dx,dz);
+  }
+  // ---- BOSS AI: charge / ground-slam / summon, with a phase change at 50% HP ----
+  updateBoss(dt, playerPos, toPlayer, dist){
+    if(!this.bossPhase2 && this.hp < this.maxHp*0.5){
+      this.bossPhase2 = true;
+      this.speed *= 1.18;
+      playBeep(70,0.4,'sawtooth',0.9);
+    }
+    const legs = this.mesh.userData.legs, body = this.mesh.userData.body;
+    let moving = false;
+
+    if(this.bossState==='decide' || this.bossState==='reposition'){
+      moving = true;
+      if(this.bossState==='decide'){
+        this.bossTimer -= dt;
+        if(this.bossTimer<=0){
+          if(!this.summoned && this.hp < this.maxHp*0.5){ this.bossState='summon_wind'; this.bossTimer=0.9; this.summoned=true; playBeep(90,0.4,'sawtooth',0.8); }
+          else {
+            const roll = Math.random();
+            const chargeChance = this.bossPhase2 ? 0.55 : 0.4;
+            if(dist>4 && roll<chargeChance){ this.bossState='charge_wind'; this.bossTimer = this.bossPhase2?0.55:0.75; this.bossMoveDir.copy(toPlayer).normalize(); playBeep(160,0.25,'sawtooth',0.7); }
+            else { this.bossState='slam_wind'; this.bossTimer = this.bossPhase2?0.7:0.95; playBeep(120,0.3,'square',0.7); this.spawnSlamTelegraph(); }
+          }
+        } else {
+          // brief reposition while deciding — moves sideways/around instead of beelining
+          const side = new THREE.Vector3(-toPlayer.z, 0, toPlayer.x).normalize();
+          const dir = side.multiplyScalar(this.bossRepositionT<1.5?1:-1).add(toPlayer.clone().multiplyScalar(dist>7?0.6:-0.3)).normalize();
+          this.moveTry(dir, this.speed*0.7, dt);
+          this.facePos(playerPos);
+          this.bossRepositionT += dt; if(this.bossRepositionT>3) this.bossRepositionT=0;
+        }
+      } else { // 'reposition' — short cooldown after an attack before deciding again
+        this.bossTimer -= dt;
+        this.facePos(playerPos);
+        if(this.bossTimer<=0){ this.bossState='decide'; this.bossTimer=this.bossPhase2?0.9:1.4; }
+      }
+    } else if(this.bossState==='charge_wind'){
+      this.facePos(playerPos);
+      this.bossTimer -= dt;
+      if(this.bossTimer<=0){ this.bossState='charging'; this.bossTimer=1.1; }
+    } else if(this.bossState==='charging'){
+      moving = true;
+      const step = this.bossMoveDir.clone().multiplyScalar(this.speed*3.2*dt);
+      const next = this.pos.clone().add(step);
+      if(collidesWithWalls(next.x,next.z,0.5)){
+        this.bossState='reposition'; this.bossTimer=1.1;
+        if(State.settings.shake) shakeAmount = Math.max(shakeAmount,0.3);
+      } else {
+        this.pos.x = next.x; this.pos.z = next.z;
+        if(dist < 1.6){ damagePlayer(this.damage*1.1); this.bossState='reposition'; this.bossTimer=1.0; }
+      }
+      this.bossTimer -= dt;
+      if(this.bossTimer<=0){ this.bossState='reposition'; this.bossTimer=1.0; }
+    } else if(this.bossState==='slam_wind'){
+      this.facePos(playerPos);
+      if(this.telegraphMesh) this.telegraphMesh.material.opacity = 0.35+0.3*Math.sin(performance.now()/90);
+      this.bossTimer -= dt;
+      if(this.bossTimer<=0){ this.executeSlam(); this.bossState='reposition'; this.bossTimer=1.3; }
+    } else if(this.bossState==='summon_wind'){
+      this.facePos(playerPos);
+      this.bossTimer -= dt;
+      if(this.bossTimer<=0){
+        const count = 3 + Math.floor(Math.random()*3);
+        for(let i=0;i<count;i++){
+          const ang = (i/count)*Math.PI*2;
+          enemies.push(new Possum(this.pos.x+Math.cos(ang)*2.5, this.pos.z+Math.sin(ang)*2.5, 'basic', {startAggro:true}));
+        }
+        this.bossState='reposition'; this.bossTimer=1.3;
+      }
+    }
+
+    if(this.hurtFlashT>0){ this.hurtFlashT-=dt; this.mesh.children[0].material.emissive = new THREE.Color(0xff0000); this.mesh.children[0].material.emissiveIntensity=0.6; }
+    else if(this.mesh.children[0].material.emissiveIntensity) { this.mesh.children[0].material.emissiveIntensity = 0; }
+
+    if(moving){
+      this.walkCycle += dt*this.speed*3.1;
+      const swing = Math.sin(this.walkCycle)*0.5;
+      legs[0].rotation.x = swing; legs[3].rotation.x = swing;
+      legs[1].rotation.x = -swing; legs[2].rotation.x = -swing;
+      body.position.y = 0.5 + Math.abs(Math.sin(this.walkCycle))*0.035;
+    } else {
+      legs.forEach(l=>{ l.rotation.x *= 0.8; });
+      body.position.y += (0.5-body.position.y)*0.2;
+    }
+  }
+  spawnSlamTelegraph(){
+    const mat = new THREE.MeshBasicMaterial({color:0xff3333, transparent:true, opacity:0.5, side:THREE.DoubleSide});
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.2, 3.2, 24), mat);
+    ring.rotation.x = -Math.PI/2;
+    ring.position.set(this.pos.x, 0.05, this.pos.z);
+    scene.add(ring);
+    this.telegraphMesh = ring;
+  }
+  executeSlam(){
+    if(this.telegraphMesh){ scene.remove(this.telegraphMesh); this.telegraphMesh=null; }
+    if(State.settings.shake) shakeAmount = Math.max(shakeAmount,0.35);
+    playBeep(60,0.35,'square',0.9);
+    const dx=Player.pos.x-this.pos.x, dz=Player.pos.z-this.pos.z;
+    if(Math.hypot(dx,dz) < 3.2){ damagePlayer(this.damage); }
+  }
+}
+function collidesWithWalls(x,z,r){
+  for(const c of colliders){
+    if(x+r>c.min.x && x-r<c.max.x && z+r>c.min.z && z-r<c.max.z) return true;
+  }
+  return false;
+}
+function collidesWithPossums(x,z,radius,exclude){
+  for(const e of enemies){
+    if(e===exclude || e.dead || e.state==='spawning') continue;
+    const dx=e.pos.x-x, dz=e.pos.z-z;
+    if(dx*dx+dz*dz < radius*radius) return true;
+  }
+  return false;
+}
+// Performance measure for Level 4's swarm chase: a possum that falls far behind the
+// fleeing player is out of sight and no longer relevant, so it's removed rather than
+// kept fully simulated — keeps the active enemy count bounded during the chase.
+function despawnFarBehindPlayer(){
+  const lvl = LEVELS[currentLevelIndex];
+  if(!lvl.despawnBehindDistance) return;
+  for(let i=enemies.length-1;i>=0;i--){
+    const e = enemies[i];
+    if(e.type==='boss' || e.dead) continue;
+    if(Player.pos.z - e.pos.z > lvl.despawnBehindDistance){
+      scene.remove(e.mesh);
+      enemies.splice(i,1);
+    }
+  }
+}
+
+// ---------- WAVE SYSTEM ----------
+let currentWaveDefs = [];
+let waveIndex = -1;
+let waveState = 'idle';
+let waveTimer = 0;
+function beginWaves(defs){
+  currentWaveDefs = defs; waveIndex=-1; waveState='idle'; waveTimer=0;
+  startNextWave();
+}
+function startNextWave(){
+  waveIndex++;
+  if(waveIndex>=currentWaveDefs.length){ waveState='done'; return; }
+  for(const def of currentWaveDefs[waveIndex]) enemies.push(new Possum(def.x, def.z, def.type, {startAggro:true}));
+  waveState='active';
+  setCenterMsg('WAVE '+(waveIndex+1)+' OF '+currentWaveDefs.length, 1.6);
+}
+function updateWaves(dt){
+  if(waveState==='active'){
+    const remaining = enemies.filter(e=>!e.dead && e.type!=='boss').length;
+    if(remaining===0){
+      if(waveIndex+1>=currentWaveDefs.length){ waveState='done'; }
+      else { waveState='waiting-next'; waveTimer=1.6; }
+    }
+  } else if(waveState==='waiting-next'){
+    waveTimer-=dt;
+    if(waveTimer<=0) startNextWave();
+  }
+}
+
+// ---------- BOSS ----------
+let boss=null;
+function spawnBoss(pos){
+  boss = new Possum(pos[0], pos[1], 'boss');
+  enemies.push(boss);
+  State.bossActive = true;
+  document.getElementById('bossBar').style.display='block';
+  document.getElementById('bossName').textContent = 'THE BURROWER';
+  setCenterMsg('THE BURROWER EMERGES', 2.4);
+}
+function onBossDefeated(){
+  State.bossDefeated = true;
+  document.getElementById('bossBar').style.display='none';
+  setCenterMsg('THE BURROWER IS DEAD', 2.2);
+  safeTimeout(()=>{
+    spawnExitPortal(LEVELS[currentLevelIndex].exitPos);
+    setCenterMsg('AN EXIT HAS OPENED', 2.4);
+    document.getElementById('objective').textContent = 'WALK THROUGH THE EXIT';
+  }, 2600);
+}
+
+// ---------- EXIT PORTAL ----------
+let exitPortal = null;
+function spawnExitPortal(pos){
+  const group = new THREE.Group();
+  const frameMat = new THREE.MeshStandardMaterial({color:0x2c2c2c, roughness:0.5, metalness:0.3});
+  const glowMat = new THREE.MeshStandardMaterial({color:0x6affc8, emissive:0x33ffaa, emissiveIntensity:1.6, transparent:true, opacity:0.8, side:THREE.DoubleSide});
+  const postL = new THREE.Mesh(new THREE.BoxGeometry(0.3,3.4,0.3), frameMat); postL.position.set(-1.35,1.7,0); group.add(postL);
+  const postR = postL.clone(); postR.position.x = 1.35; group.add(postR);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(3.0,0.3,0.3), frameMat); top.position.set(0,3.4,0); group.add(top);
+  const veil = new THREE.Mesh(new THREE.PlaneGeometry(2.5,3.2), glowMat); veil.position.set(0,1.7,0); group.add(veil);
+  const glowLight = new THREE.PointLight(0x66ffcc, 1.4, 8, 2); glowLight.position.set(0,1.7,0); group.add(glowLight);
+  group.position.set(pos[0], pos[1]||0, pos[2]);
+  scene.add(group);
+  group.userData.veil = veil;
+  exitPortal = group;
+}
+function updateExitPortal(dt){
+  if(!exitPortal) return;
+  const veil = exitPortal.userData.veil;
+  veil.material.opacity = 0.55 + Math.sin(performance.now()/280)*0.2;
+  if(!State.levelEnded && Math.abs(Player.pos.x-exitPortal.position.x)<1.3 && Math.abs(Player.pos.z-exitPortal.position.z)<0.6){
+    endLevel();
+  }
+}
+
+// ---------- LEVEL DEFINITIONS ----------
+const LEVELS = [
+  {
+    name:'THE ENTRANCE',
+    build: buildLevel1,
+    startPos:[0,1.7,8],
+    checkpoints:[{z:13,pos:[0,1.7,16]},{z:39,pos:[0,1.7,42]},{z:47,pos:[0,1.7,50]}],
+    waveTriggerZ:20,
+    waveDefs:[
+      [ {type:'basic', x:-4, z:27}, {type:'basic', x:4, z:29} ],
+      [ {type:'basic', x:-3, z:31}, {type:'basic', x:3, z:33}, {type:'mutant', x:0, z:35} ],
+      [ {type:'basic', x:-2, z:37}, {type:'basic', x:2, z:37}, {type:'sprinter', x:0, z:39} ],
+    ],
+    hasBoss:true, bossTriggerZ:49, bossSpawnPos:[0,58], gateZ:47.9,
+    exitPos:[0,0,61.5],
+    clue:"THEY'RE NOT ATTACKING RANDOMLY.  —L",
+    pickups:[
+      {type:'health',x:-3,z:10}, {type:'health',x:5,z:26},
+      {type:'bucks',x:-4,z:28,amount:10}, {type:'bucks',x:3,z:30,amount:10}, {type:'bucks',x:0,z:36,amount:12},
+      {type:'bucks',x:-8,z:52,amount:20}, {type:'bucks',x:8,z:60,amount:20},
+    ],
+    introLines:[
+      {who:'MISSION CONTROL', text:'Possum Destroyer 3000, your mission is simple.'},
+      {who:'PLAYER', text:'How many are we expecting?'},
+      {who:'MISSION CONTROL', text:'Unknown.'},
+      {who:'PLAYER', text:"That's reassuring."},
+    ],
+  },
+  {
+    name:'THE BURROWS',
+    build: buildLevel2,
+    startPos:[0,1.7,7],
+    checkpoints:[{z:18,pos:[0,1.7,22]},{z:36,pos:[28,1.7,40]},{z:44,pos:[28,1.7,48]}],
+    waveTriggerZ:21,
+    waveDefs:[
+      [ {type:'basic', x:20, z:26}, {type:'basic', x:36, z:26} ],
+      [ {type:'basic', x:20, z:30}, {type:'ranged', x:36, z:18}, {type:'mutant', x:28, z:34} ],
+      [ {type:'basic', x:24, z:24}, {type:'basic', x:32, z:24}, {type:'ranged', x:36, z:32}, {type:'sprinter', x:28, z:28} ],
+    ],
+    hasBoss:false, exitTriggerZ:47, gateZ:44.9, gateX:28,
+    exitPos:[28,0,56],
+    clue:"THEY'RE BUILDING SOMETHING.  —L KNOWS.",
+    pickups:[
+      {type:'health',x:20,z:23}, {type:'health',x:34,z:32},
+      {type:'bucks',x:22,z:26,amount:12}, {type:'bucks',x:36,z:26,amount:12}, {type:'bucks',x:28,z:30,amount:14},
+      {type:'bucks',x:24,z:50,amount:18}, {type:'bucks',x:32,z:52,amount:18},
+    ],
+    introLines:[
+      {who:'LEVEL 2', text:'THE BURROWS'},
+      {who:'PLAYER', text:"Deeper this time. Let's see what's down here."},
+    ],
+  },
+  {
+    name:'THE SEWER MAZE',
+    build: buildLevel3,
+    startPos:[0,1.7,6],
+    checkpoints:[
+      {z:16,pos:[0,1.7,20]}, {z:32,pos:[0,1.7,36]}, {z:48,pos:[0,1.7,52]},
+      {z:64,pos:[0,1.7,68]}, {z:79,pos:[0,1.7,83]}, {z:93,pos:[0,1.7,96]},
+    ],
+    hasBoss:false, gateZ:93.9,
+    // the exit is locked until all 3 switches are found and activated around the maze
+    gateOpenCondition: ()=> switchesActivated>=3,
+    exitSpawnCondition: ()=> State._gateOpened,
+    exitPos:[0,0,111],
+    clue:"HE PROTECTS THEM.  —UNKNOWN",
+    initialObjective:'POWER: 0/3',
+    pickups:[
+      {type:'health',x:-10,z:20}, {type:'health',x:10,z:36}, {type:'health',x:-12,z:56}, {type:'health',x:6,z:84},
+      {type:'bucks',x:-8,z:22,amount:8}, {type:'bucks',x:8,z:38,amount:8}, {type:'bucks',x:0,z:60,amount:12},
+    ],
+    introLines:[
+      {who:'LEVEL 3', text:'THE SEWER MAZE'},
+      {who:'PLAYER', text:'Something built all of this on purpose.'},
+    ],
+    // discrete, area-triggered encounters instead of a linear wave — the maze branches, so a
+    // single z-threshold wouldn't cover every path the player might take
+    triggers:[
+      { min:[-6,20], max:[6,26], fired:false, action: ()=>{
+          safeTimeout(()=>{
+            const pts=[[-9,22],[9,22],[-7,26],[7,26]];
+            for(const p of pts) enemies.push(new Possum(p[0],p[1],'basic',{startAggro:true}));
+            setCenterMsg('THEY WERE WAITING', 1.8);
+          }, 2200);
+        }
+      },
+      { min:[-2,46], max:[2,48], fired:false, action: ()=>{
+          enemies.push(new Possum(0,48.4,'basic',{startAggro:true}));
+          enemies.push(new Possum(0.8,48.6,'basic',{startAggro:true}));
+          enemies.push(new Possum(-0.6,45.4,'basic',{startAggro:true}));
+          enemies.push(new Possum(0.6,45.3,'mutant',{startAggro:true}));
+          setCenterMsg("YOU'RE SURROUNDED", 1.8);
+        }
+      },
+      { min:[-6,52], max:[6,58], fired:false, action: ()=>{
+          const pts=[[-11,55],[11,55],[-9,61],[9,61],[0,63],[-4,58],[4,58]];
+          for(const p of pts){
+            const roll = Math.random();
+            const t = roll<0.15?'mutant':roll<0.28?'ranged':roll<0.38?'sprinter':'basic';
+            enemies.push(new Possum(p[0],p[1], t, {startAggro:true}));
+          }
+          setCenterMsg('THE NEST AWAKENS', 2.0);
+        }
+      },
+      { min:[-2,70], max:[2,72], fired:false, action: ()=>{
+          enemies.push(new Possum(0,77,'basic',{scripted:true}));
+          safeTimeout(()=>{
+            const bz = Math.max(66, Player.pos.z-6);
+            for(let i=0;i<4;i++) enemies.push(new Possum((Math.random()-0.5)*2, bz+(Math.random()-0.5)*2, i===0?'mutant':'basic', {startAggro:true}));
+            setCenterMsg('THEY CAME FROM BEHIND', 1.8);
+          }, 3600);
+        }
+      },
+    ],
+  },
+  {
+    name:'THE AFTERMATH',
+    build: buildLevel4,
+    startPos:[0,1.7,6],
+    checkpoints:[
+      {z:18,pos:[0,1.7,22]}, {z:38,pos:[0,1.7,42]}, {z:58,pos:[0,1.7,62]}, {z:80,pos:[0,1.7,84]},
+      {z:100,pos:[0,1.7,104]}, {z:132,pos:[0,1.7,136]}, {z:162,pos:[0,1.7,166]},
+    ],
+    hasBoss:false, exitSpawnCondition: ()=> State._doorReady, despawnBehindDistance:22,
+    exitPos:[0,0,183],
+    clue:'"You should have left them alone."  —UNKNOWN',
+    pickups:[
+      {type:'health',x:-14,z:26}, {type:'health',x:-19,z:87}, {type:'health',x:0,z:138}, {type:'health',x:0,z:158},
+      {type:'bucks',x:0,z:108,amount:20},
+      {type:'bucks',x:-8,z:138,amount:18}, {type:'bucks',x:8,z:156,amount:18}, {type:'bucks',x:0,z:178,amount:24},
+    ],
+    introLines:[
+      {who:'LEVEL 4', text:'THE AFTERMATH'},
+      {who:'SYSTEM', text:'SYSTEM INITIALIZING…'},
+      {who:'SYSTEM', text:'CONTAINMENT SYSTEMS ONLINE.'},
+      {who:'SYSTEM', text:'SECURITY SYSTEM ONLINE.'},
+      {who:'SYSTEM', text:'ERROR.'},
+      {who:'PLAYER', text:"...that's not good."},
+    ],
+    // The 80-possum escape sequence: 25 basic (yellow eyes), 20 ranged (black spitters, held
+    // back to attack from range/behind), 15 mutant (red eyes, tough obstacles), 20 sprinter
+    // (brown/purple eyes, fast flankers) — spread across several waves so they flood in from
+    // different directions rather than all landing on the player at once.
+    triggers:[
+      // Hub 4's west alcove — a small ambush guarding a reward, for extra difficulty in the maze itself
+      // (separate from, and not counted in, the 80-possum escape sequence below)
+      { min:[-20,86], max:[-14,88], fired:false, action: ()=>{
+          const pts=[[-17,86],[-19,87.5],[-15,88]];
+          for(const p of pts) enemies.push(new Possum(p[0],p[1],'basic',{startAggro:true}));
+          setCenterMsg('SOMETHING WAS GUARDING THAT', 1.6);
+          safeTimeout(()=>{ spawnBucksPickup(-17,87,20); }, 400);
+        }
+      },
+      // the big reveal — entering deep into the observation room breaches containment
+      // wave 1: 8 basic, 3 mutant, 4 sprinter (15) — ranged held back, not yet in view
+      { min:[-6,106], max:[6,112], fired:false, action: ()=>{
+          setCenterMsg('...', 0.8);
+          safeTimeout(()=>{
+            setCenterMsg('THE GLASS CRACKS', 1.6);
+            safeTimeout(()=>{
+              setCenterMsg('CONTAINMENT BREACH', 2.0);
+              document.getElementById('objective').textContent = 'GET TO THE EXIT';
+              if(State.settings.shake) shakeAmount = Math.max(shakeAmount, 0.3);
+              playBeep(90,0.5,'sawtooth',0.9);
+              const spawn = (n,type,cx,cz,spread)=>{ for(let i=0;i<n;i++) enemies.push(new Possum(cx+(Math.random()-0.5)*spread, cz+(Math.random()-0.5)*spread, type, {startAggro:true})); };
+              spawn(8,'basic',0,110,8);
+              spawn(3,'mutant',0,113,6);
+              spawn(4,'sprinter',0,108,8);
+            }, 1500);
+          }, 1400);
+        }
+      },
+      // chase encounter 1 — a group blocks the corridor ahead: 4 basic, 2 sprinter (6)
+      { min:[-2,122], max:[2,125], fired:false, action: ()=>{
+          const pts=[[0.6,130,'basic'],[-0.6,131,'basic'],[0,128,'basic'],[0.8,129,'basic'],[-0.8,132,'sprinter'],[0,133,'sprinter']];
+          for(const p of pts) enemies.push(new Possum(p[0],p[1],p[2],{startAggro:true}));
+          setCenterMsg('KEEP MOVING', 1.4);
+        }
+      },
+      // chase encounter 2 — the swarm catches up from behind: 5 basic, 2 mutant, 3 sprinter (10)
+      { min:[-2,128], max:[2,131], fired:false, action: ()=>{
+          const bz = Math.max(118, Player.pos.z-8);
+          const types = ['basic','basic','basic','basic','basic','mutant','mutant','sprinter','sprinter','sprinter'];
+          for(const t of types) enemies.push(new Possum((Math.random()-0.5)*3, bz+(Math.random()-0.5)*4, t, {startAggro:true}));
+        }
+      },
+      // chase encounter 3 — the cross room floods in from multiple directions:
+      // 8 basic, 5 mutant, 6 sprinter, 4 ranged (23)
+      { min:[-6,136], max:[6,142], fired:false, action: ()=>{
+          const pts=[
+            [-10,138,'basic'],[10,138,'basic'],[-10,144,'basic'],[10,144,'basic'],[0,140,'basic'],[-5,146,'basic'],[5,134,'basic'],[-8,141,'basic'],
+            [-9,140,'mutant'],[9,140,'mutant'],[0,145,'mutant'],[-6,136,'mutant'],[6,136,'mutant'],
+            [-11,142,'sprinter'],[11,142,'sprinter'],[-4,138,'sprinter'],[4,146,'sprinter'],[0,136,'sprinter'],[8,144,'sprinter'],
+            [-11,146,'ranged'],[11,146,'ranged'],[-3,134,'ranged'],[3,147,'ranged'],
+          ];
+          for(const p of pts) enemies.push(new Possum(p[0],p[1],p[2],{startAggro:true}));
+          setCenterMsg('THEY\u2019RE EVERYWHERE', 1.6);
+        }
+      },
+      // chase encounter 4 — spitters supporting the swarm from behind/the sides: 8 ranged, 3 sprinter (11)
+      { min:[-2,150], max:[2,153], fired:false, action: ()=>{
+          const rangedPts=[[0,158],[0,160],[-1,161],[1,159],[-1.2,157],[1.2,162],[0.6,163],[-0.6,156]];
+          for(const p of rangedPts) enemies.push(new Possum(p[0],p[1],'ranged',{startAggro:true}));
+          const bz = Math.max(138, Player.pos.z-8);
+          for(let i=0;i<3;i++) enemies.push(new Possum((Math.random()-0.5)*2, bz+(Math.random()-0.5)*3, 'sprinter', {startAggro:true}));
+        }
+      },
+      // final door-opening tension — 5 mutant, 8 ranged, 2 sprinter (15) close in while the
+      // door opens; the exit only becomes usable once the door finishes, not before
+      { min:[-1.5,170], max:[1.5,172], fired:false, action: ()=>{
+          setCenterMsg('THE DOOR IS OPENING', 1.8);
+          document.getElementById('objective').textContent = 'HOLD ON — THE DOOR IS OPENING';
+          const spawn=(n,type,cx,cz,spread)=>{ for(let i=0;i<n;i++) enemies.push(new Possum(cx+(Math.random()-0.5)*spread, cz+(Math.random()-0.5)*spread, type, {startAggro:true})); };
+          spawn(5,'mutant',0,177,5);
+          spawn(8,'ranged',0,181,6);
+          spawn(2,'sprinter',0,175,4);
+          safeTimeout(()=>{
+            State._doorReady = true;
+            setCenterMsg('THE DOOR IS OPEN — RUN', 2.0);
+            document.getElementById('objective').textContent = 'RUN THROUGH THE EXIT';
+            playBeep(500,0.2,'square',0.5);
+          }, 4500);
+        }
+      },
+    ],
+  },
+];
+
+function updateLevelTriggers(){
+  const lvl = LEVELS[currentLevelIndex];
+  if(lvl.waveTriggerZ!=null && !State._waveSpawned && Player.pos.z>lvl.waveTriggerZ){
+    beginWaves(lvl.waveDefs); State._waveSpawned=true; setCenterMsg('POSSUMS DETECTED', 1.8);
+  }
+  const wavesCleared = waveState==='done';
+  if(gateCollider && !State._gateOpened){
+    // Level 1/2 open their gate once their wave is cleared; Level 3 supplies its own
+    // condition (all 3 switches) via lvl.gateOpenCondition — default keeps old behavior.
+    const openNow = lvl.gateOpenCondition ? lvl.gateOpenCondition() : wavesCleared;
+    if(openNow){ State._gateOpened = true; collapseGate(); }
+  }
+
+  if(lvl.hasBoss){
+    if(!State._bossSpawned && Player.pos.z>lvl.bossTriggerZ){ spawnBoss(lvl.bossSpawnPos); State._bossSpawned=true; }
+  } else {
+    const exitNow = lvl.exitSpawnCondition ? lvl.exitSpawnCondition() : (lvl.exitTriggerZ!=null && Player.pos.z>lvl.exitTriggerZ);
+    if(!State._exitSpawned && exitNow){
+      spawnExitPortal(lvl.exitPos); State._exitSpawned=true;
+      setCenterMsg('AN EXIT HAS OPENED', 2.2);
+      document.getElementById('objective').textContent = 'WALK THROUGH THE EXIT';
+    }
+  }
+  for(const cp of lvl.checkpoints){
+    if(Player.pos.z>cp.z && Player.checkpoint.z<cp.z) Player.checkpoint.set(cp.pos[0],cp.pos[1],cp.pos[2]);
+  }
+  updateGenericTriggers(lvl);
+}
+
+// ---------- PICKUPS ----------
+const pickups = [];
+function pickupMesh(color){
+  return new THREE.Mesh(new THREE.OctahedronGeometry(0.28,0), new THREE.MeshStandardMaterial({color, emissive:color, emissiveIntensity:0.7}));
+}
+function spawnHealthPickup(x,z,groundY=0){
+  const mesh = pickupMesh(0x44dd66); mesh.position.set(x,0.6+groundY,z); scene.add(mesh);
+  pickups.push({mesh, type:'health', x, z, baseY:0.6+groundY});
+}
+function spawnBucksPickup(x,z,amount,groundY=0){
+  const mesh = pickupMesh(0xffd24a); mesh.position.set(x,0.6+groundY,z); scene.add(mesh);
+  pickups.push({mesh, type:'bucks', amount, x, z, baseY:0.6+groundY});
+}
+function spawnM14AmmoPickup(x,z,amount){
+  const mesh = pickupMesh(0x8899ff); mesh.position.set(x,0.6,z); scene.add(mesh);
+  pickups.push({mesh, type:'m14ammo', amount, x, z, baseY:0.6});
+}
+function placeInitialPickups(list){
+  for(const p of list){
+    if(p.type==='health') spawnHealthPickup(p.x,p.z);
+    else if(p.type==='m14ammo') spawnM14AmmoPickup(p.x,p.z,p.amount);
+    else spawnBucksPickup(p.x,p.z,p.amount);
+  }
+}
+function updatePickups(dt){
+  for(let i=pickups.length-1;i>=0;i--){
+    const p = pickups[i];
+    p.mesh.rotation.y += dt*2;
+    p.mesh.position.y = p.baseY + Math.sin(performance.now()/300 + p.x)*0.08;
+    const dx = Player.pos.x-p.mesh.position.x, dz = Player.pos.z-p.mesh.position.z;
+    if(Math.sqrt(dx*dx+dz*dz) < 1.0){
+      if(p.type==='health'){ Player.health = Math.min(Player.maxHealth, Player.health+30); playBeep(660,0.08); }
+      else if(p.type==='m14ammo'){ M14.reserve = Math.min(200, M14.reserve+p.amount); playBeep(760,0.08); }
+      else { State.bucks += p.amount; playBeep(880,0.06); }
+      scene.remove(p.mesh); pickups.splice(i,1);
+    }
+  }
+}
+
+// ---------- AUDIO ----------
+let actx;
+function ensureAudio(){ if(!actx) actx = new (window.AudioContext||window.webkitAudioContext)(); }
+function playBeep(freq, dur, type='sine', vol=1){
+  if(!actx) return;
+  const v = (State.settings.vol/10) * vol;
+  if(v<=0) return;
+  const o = actx.createOscillator(); const g = actx.createGain();
+  o.type=type; o.frequency.value=freq; g.gain.value=v*0.3;
+  o.connect(g); g.connect(actx.destination);
+  o.start();
+  g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur);
+  o.stop(actx.currentTime+dur+0.02);
+}
+function playGunshot(){ ensureAudio(); playBeep(180,0.09,'square',1); playBeep(90,0.14,'sawtooth',0.6); }
+function playReload(){ ensureAudio(); playBeep(320,0.08,'square',0.5); setTimeout(()=>playBeep(260,0.1,'square',0.5), 550); }
+function playHurt(){ ensureAudio(); playBeep(120,0.15,'sawtooth',0.8); }
+function playEmptyClick(){ ensureAudio(); playBeep(200,0.05,'square',0.3); }
+
+// ---------- VIEWMODEL PISTOL ----------
+const gunGroup = new THREE.Group();
+const gunBasePos = new THREE.Vector3(0.26, -0.24, -0.5);
+gunGroup.position.copy(gunBasePos);
+camera.add(gunGroup);
+
+const gunMetal = new THREE.MeshStandardMaterial({color:0x2b2c2f, roughness:0.4, metalness:0.6});
+const gunGrip = new THREE.MeshStandardMaterial({color:0x1c1d1f, roughness:0.8});
+const gunStripe = new THREE.MeshStandardMaterial({color:0xff7a1a, emissive:0xff5500, emissiveIntensity:0.5});
+const gunIndicator = new THREE.MeshStandardMaterial({color:0x66ff88, emissive:0x33dd55, emissiveIntensity:1.2});
+
+const gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.09,0.075,0.32), gunMetal);
+gunGroup.add(gunBody);
+const gunSlide = new THREE.Mesh(new THREE.BoxGeometry(0.075,0.05,0.26), gunMetal);
+gunSlide.position.set(0,0.05,-0.02);
+gunGroup.add(gunSlide);
+const gunBarrel = new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.09,8), gunMetal);
+gunBarrel.rotation.x = Math.PI/2;
+gunBarrel.position.set(0,0.05,-0.2);
+gunGroup.add(gunBarrel);
+const gunGripMesh = new THREE.Mesh(new THREE.BoxGeometry(0.075,0.16,0.09), gunGrip);
+gunGripMesh.position.set(0,-0.1,0.09);
+gunGripMesh.rotation.x = 0.25;
+gunGroup.add(gunGripMesh);
+const gunStripeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.092,0.012,0.05), gunStripe);
+gunStripeMesh.position.set(0,0.01,0.08);
+gunGroup.add(gunStripeMesh);
+const gunIndicatorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.02), gunIndicator);
+gunIndicatorMesh.position.set(0.05,0.02,0.14);
+gunGroup.add(gunIndicatorMesh);
+
+const muzzleFlashMat = new THREE.MeshBasicMaterial({color:0xffdd88, transparent:true, opacity:0});
+const muzzleFlashMesh = new THREE.Mesh(new THREE.ConeGeometry(0.045,0.14,8), muzzleFlashMat);
+muzzleFlashMesh.rotation.x = -Math.PI/2;
+muzzleFlashMesh.position.set(0,0.05,-0.32);
+gunGroup.add(muzzleFlashMesh);
+const muzzleLight = new THREE.PointLight(0xffcc66, 0, 3, 2);
+muzzleLight.position.set(0,0.05,-0.3);
+gunGroup.add(muzzleLight);
+
+// ---------- M14 VIEWMODEL (hidden until picked up in Level 3) ----------
+const m14Group = new THREE.Group();
+const m14BasePos = new THREE.Vector3(0.24, -0.22, -0.62);
+m14Group.position.copy(m14BasePos);
+m14Group.visible = false;
+camera.add(m14Group);
+const woodMat = new THREE.MeshStandardMaterial({color:0x5c3a20, roughness:0.85});
+const m14Metal = new THREE.MeshStandardMaterial({color:0x2c2d2f, roughness:0.4, metalness:0.55});
+const m14Stock = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.09,0.38), woodMat); m14Stock.position.set(0,-0.01,0.22); m14Group.add(m14Stock);
+const m14Body = new THREE.Mesh(new THREE.BoxGeometry(0.09,0.09,0.4), m14Metal); m14Body.position.set(0,0.01,-0.12); m14Group.add(m14Body);
+const m14BarrelMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.016,0.55,8), m14Metal);
+m14BarrelMesh.rotation.x = Math.PI/2; m14BarrelMesh.position.set(0,0.02,-0.55); m14Group.add(m14BarrelMesh);
+const m14Sight = new THREE.Mesh(new THREE.BoxGeometry(0.02,0.05,0.02), m14Metal); m14Sight.position.set(0,0.08,-0.5); m14Group.add(m14Sight);
+const m14Mag = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.16,0.09), m14Metal); m14Mag.rotation.x=-0.2; m14Mag.position.set(0,-0.11,-0.05); m14Group.add(m14Mag);
+const m14MuzzleFlashMat = new THREE.MeshBasicMaterial({color:0xffdd88, transparent:true, opacity:0});
+const m14MuzzleFlashMesh = new THREE.Mesh(new THREE.ConeGeometry(0.05,0.16,8), m14MuzzleFlashMat);
+m14MuzzleFlashMesh.rotation.x = -Math.PI/2; m14MuzzleFlashMesh.position.set(0,0.02,-0.82); m14Group.add(m14MuzzleFlashMesh);
+const m14MuzzleLight = new THREE.PointLight(0xffcc66, 0, 3.5, 2); m14MuzzleLight.position.set(0,0.02,-0.8); m14Group.add(m14MuzzleLight);
+
+const RECOIL_TIME = 0.14;
+let recoilT = 0;
+let muzzleFlashT = 0;
+function triggerRecoil(){ recoilT = RECOIL_TIME; muzzleFlashT = 0.045; }
+
+function updateGunViewmodel(dt){
+  const usingM14 = currentWeapon==='m14';
+  gunGroup.visible = !usingM14;
+  m14Group.visible = usingM14;
+  const w = activeWeapon();
+  const group = usingM14 ? m14Group : gunGroup;
+  const basePos = usingM14 ? m14BasePos : gunBasePos;
+
+  let swayX=0, swayY=0;
+  const moving = State.isMobile ? (Math.abs(moveVec.x)>0.05||Math.abs(moveVec.y)>0.05)
+                                 : (keys['KeyW']||keys['KeyA']||keys['KeyS']||keys['KeyD']);
+  if(moving && Player.grounded){
+    const t = performance.now()/1000;
+    swayY = Math.sin(t*8.5)*0.012;
+    swayX = Math.cos(t*4.2)*0.007;
+  }
+  if(recoilT>0) recoilT = Math.max(0, recoilT-dt);
+  const recoilFrac = recoilT/RECOIL_TIME;
+  const recoilKickZ = recoilFrac*(usingM14?0.13:0.09);
+  const recoilKickY = recoilFrac*0.02;
+  const recoilTiltX = -recoilFrac*(usingM14?0.22:0.32);
+  if(!usingM14) gunSlide.position.z = -0.02 + recoilFrac*0.07;
+
+  let reloadDip=0, reloadTilt=0, reloadYaw=0;
+  if(w.reloading){
+    const frac = Math.min(1, w.reloadT/w.reloadTime);
+    const dipCurve = Math.sin(frac*Math.PI);
+    reloadDip = dipCurve*0.22; reloadTilt = dipCurve*0.5; reloadYaw = Math.sin(frac*Math.PI*2)*0.12;
+  }
+  group.position.set(
+    basePos.x + swayX,
+    basePos.y + swayY - reloadDip + recoilKickY,
+    basePos.z + recoilKickZ
+  );
+  group.rotation.x = recoilTiltX + reloadTilt;
+  group.rotation.y = reloadYaw;
+
+  if(muzzleFlashT>0) muzzleFlashT = Math.max(0, muzzleFlashT-dt);
+  const flashMat = usingM14 ? m14MuzzleFlashMat : muzzleFlashMat;
+  const flashLight = usingM14 ? m14MuzzleLight : muzzleLight;
+  if(muzzleFlashT>0){
+    flashMat.opacity = muzzleFlashT/0.045;
+    flashLight.intensity = (muzzleFlashT/0.045)*1.4;
+  } else { flashMat.opacity = 0; flashLight.intensity = 0; }
+  if(usingM14){ muzzleFlashMat.opacity=0; muzzleLight.intensity=0; } else { m14MuzzleFlashMat.opacity=0; m14MuzzleLight.intensity=0; }
+}
+
+// ---------- MISSILE ABILITY (its own dedicated button — Q, or a dedicated mobile button) ----------
+const MISSILE_LOCK_TIME = 1.0;
+const MISSILE_COOLDOWN = 8;
+const MISSILE_DAMAGE = 140;
+const MISSILE_SPLASH_RADIUS = 3;
+const MISSILE_SPLASH_DAMAGE = 60;
+let missileState = 'idle'; // idle, aiming, locked
+let missileTarget = null, missileLockT = 0, missileCooldown = 0;
+let activeMissileProjectile = null;
+
+function handleMissileButton(){
+  if(!Player.hasMissile || State.paused || State.levelEnded) return;
+  if(missileState==='idle'){
+    if(missileCooldown>0){ setCenterMsg('MISSILE RECHARGING', 1.0); return; }
+    missileState='aiming'; missileTarget=null; missileLockT=0;
+  } else if(missileState==='aiming'){
+    missileState='idle'; missileTarget=null; missileLockT=0; // second press before lock cancels
+  } else if(missileState==='locked'){
+    launchMissile();
+  }
+}
+function launchMissile(){
+  const target = missileTarget;
+  missileState='idle'; missileCooldown=MISSILE_COOLDOWN; missileTarget=null; missileLockT=0;
+  const startPos = new THREE.Vector3(); camera.getWorldPosition(startPos);
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.09,0.4,8), new THREE.MeshStandardMaterial({color:0x882211, emissive:0xff5511, emissiveIntensity:0.8}));
+  mesh.rotation.x = Math.PI/2;
+  mesh.position.copy(startPos);
+  const trailLight = new THREE.PointLight(0xff7733, 1.0, 4, 2); mesh.add(trailLight);
+  scene.add(mesh);
+  activeMissileProjectile = {mesh, target, speed:11};
+  playBeep(140,0.2,'sawtooth',0.7);
+}
+function updateMissileProjectile(dt){
+  const mp = activeMissileProjectile;
+  if(!mp.target || mp.target.dead){ scene.remove(mp.mesh); activeMissileProjectile=null; return; }
+  const targetPos = new THREE.Vector3(mp.target.pos.x, mp.target.pos.y+0.5, mp.target.pos.z);
+  const dir = new THREE.Vector3().subVectors(targetPos, mp.mesh.position);
+  const dist = dir.length();
+  dir.normalize();
+  mp.mesh.position.addScaledVector(dir, mp.speed*dt);
+  mp.mesh.lookAt(targetPos);
+  if(dist < 0.6){
+    mp.target.takeDamage(MISSILE_DAMAGE);
+    for(const e of enemies){
+      if(!e.dead && e!==mp.target){
+        const d = e.pos.distanceTo(mp.target.pos);
+        if(d<MISSILE_SPLASH_RADIUS) e.takeDamage(Math.max(0, MISSILE_SPLASH_DAMAGE*(1-d/MISSILE_SPLASH_RADIUS)));
+      }
+    }
+    spawnExplosionFX(mp.mesh.position.clone());
+    scene.remove(mp.mesh);
+    activeMissileProjectile=null;
+    playBeep(80,0.3,'square',0.9);
+  }
+}
+function updateMissile(dt){
+  if(missileCooldown>0) missileCooldown = Math.max(0, missileCooldown-dt);
+  if(missileState==='aiming'){
+    raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+    const meshes = enemies.filter(e=>!e.dead && e.state!=='spawning').map(e=>e.mesh);
+    const hits = raycaster.intersectObjects(meshes,true);
+    let target=null;
+    if(hits.length){
+      let root=hits[0].object; while(root.parent && root.parent!==scene) root=root.parent;
+      target = enemies.find(e=>e.mesh===root) || null;
+    }
+    if(target && target===missileTarget){
+      missileLockT += dt;
+      if(missileLockT>=MISSILE_LOCK_TIME){ missileState='locked'; }
+    } else { missileTarget = target; missileLockT = 0; }
+  }
+  if(activeMissileProjectile) updateMissileProjectile(dt);
+}
+function updateMissileLockUI(){
+  const box = document.getElementById('missileLockBox');
+  if((missileState==='aiming'||missileState==='locked') && missileTarget && !missileTarget.dead){
+    const p = new THREE.Vector3(missileTarget.pos.x, missileTarget.pos.y+0.6, missileTarget.pos.z);
+    const proj = p.clone().project(camera);
+    if(proj.z<1){
+      const x=(proj.x*0.5+0.5)*window.innerWidth;
+      const y=(-proj.y*0.5+0.5)*window.innerHeight;
+      const size = missileState==='locked'? 78:60;
+      box.style.display='block';
+      box.style.left=(x-size/2)+'px'; box.style.top=(y-size/2)+'px';
+      box.style.width=size+'px'; box.style.height=size+'px';
+      box.classList.toggle('locked', missileState==='locked');
+    } else box.style.display='none';
+  } else box.style.display='none';
+}
+// ---------- POSSUM BOMB (distraction device + explosive) ----------
+const POSSUM_BOMB_COOLDOWN = 30;
+const POSSUM_BOMB_ATTRACT_RADIUS = 7;
+const POSSUM_BOMB_BLAST_RADIUS = 3.5;
+let possumBombCooldown = 0;
+let activePossumBomb = null;
+
+function makePossumBombMesh(){
+  const g = new THREE.Group();
+  const caseMat = new THREE.MeshStandardMaterial({color:0x4a3a2a, roughness:0.85});
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.19,0.26,10), caseMat); g.add(body);
+  const speakerMat = new THREE.MeshStandardMaterial({color:0x1c1c1c, roughness:0.6});
+  const speaker = new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,0.04,10), speakerMat); speaker.position.y=0.15; g.add(speaker);
+  const wireMat = new THREE.MeshStandardMaterial({color:0xaa3333, roughness:0.5});
+  const wire = new THREE.Mesh(new THREE.TorusGeometry(0.14,0.014,6,12), wireMat); wire.rotation.x=Math.PI/2; wire.position.y=0.03; g.add(wire);
+  const bulbMat = new THREE.MeshStandardMaterial({color:0xff2222, emissive:0xff0000, emissiveIntensity:1});
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.045,8,8), bulbMat); bulb.position.y=0.19; g.add(bulb);
+  g.userData.bulbMat = bulbMat;
+  return g;
+}
+function throwPossumBomb(){
+  if(!Player.hasPossumBomb || State.paused || State.levelEnded || State.cutsceneLock) return;
+  if(activePossumBomb) return;
+  if(possumBombCooldown>0){ setCenterMsg('POSSUM BOMB RECHARGING', 1.0); return; }
+  possumBombCooldown = POSSUM_BOMB_COOLDOWN;
+  const forward = new THREE.Vector3(-Math.sin(Player.yaw),0,-Math.cos(Player.yaw));
+  const throwDist = 7;
+  const landX = Player.pos.x + forward.x*throwDist, landZ = Player.pos.z + forward.z*throwDist;
+  const mesh = makePossumBombMesh();
+  const startPos = new THREE.Vector3(); camera.getWorldPosition(startPos);
+  mesh.position.copy(startPos);
+  scene.add(mesh);
+  const light = new THREE.PointLight(0xff2222, 0.7, 5, 2); mesh.add(light);
+  activePossumBomb = {mesh, light, state:'flying', t:0, landX, landZ, startPos:startPos.clone(), stateT:0, nextBeep:0};
+  playBeep(300,0.1,'square',0.4);
+}
+function updatePossumBomb(dt){
+  if(possumBombCooldown>0) possumBombCooldown = Math.max(0, possumBombCooldown-dt);
+  if(!activePossumBomb) return;
+  const b = activePossumBomb;
+  b.stateT += dt;
+  if(b.state==='flying'){
+    b.t += dt;
+    const f = Math.min(1, b.t/0.5);
+    b.mesh.position.x = b.startPos.x + (b.landX-b.startPos.x)*f;
+    b.mesh.position.z = b.startPos.z + (b.landZ-b.startPos.z)*f;
+    b.mesh.position.y = b.startPos.y + (0.2-b.startPos.y)*f + Math.sin(f*Math.PI)*1.4;
+    if(f>=1){ b.state='landed'; b.stateT=0; playBeep(500,0.1,'square',0.5); }
+  } else if(b.state==='landed'){
+    const glow = 0.6+Math.sin(performance.now()/200)*0.4;
+    b.light.intensity = glow; b.mesh.userData.bulbMat.emissiveIntensity = glow*1.3;
+    for(const e of enemies){
+      if(e.dead || e.type==='boss' || e.scripted || e.state==='spawning') continue;
+      const dx=e.pos.x-b.mesh.position.x, dz=e.pos.z-b.mesh.position.z;
+      if(dx*dx+dz*dz < POSSUM_BOMB_ATTRACT_RADIUS*POSSUM_BOMB_ATTRACT_RADIUS){ e.luredTarget = b.mesh.position; e.state='lured'; }
+    }
+    if(b.stateT>2.2){ b.state='countdown'; b.stateT=0; playBeep(700,0.1,'square',0.6); }
+  } else if(b.state==='countdown'){
+    const frac = Math.min(1, b.stateT/1.8);
+    b.light.intensity = 1+Math.sin(performance.now()/(140-frac*90))*1;
+    b.mesh.userData.bulbMat.emissiveIntensity = b.light.intensity;
+    b.nextBeep -= dt;
+    if(b.nextBeep<=0){ playBeep(750+frac*450,0.06,'square',0.7); b.nextBeep = Math.max(0.07, 0.32-frac*0.27); }
+    if(b.stateT>1.8) explodePossumBomb(b);
+  }
+}
+function explodePossumBomb(b){
+  const pos = b.mesh.position.clone();
+  playBeep(60,0.5,'sawtooth',1);
+  spawnExplosionFX(pos);
+  if(State.settings.shake) shakeAmount = Math.max(shakeAmount,0.35);
+  for(const e of enemies){
+    if(e.dead) continue;
+    const dx=e.pos.x-pos.x, dz=e.pos.z-pos.z;
+    const dist = Math.hypot(dx,dz);
+    if(dist < POSSUM_BOMB_BLAST_RADIUS){
+      const falloff = Math.pow(Math.max(0, 1-dist/POSSUM_BOMB_BLAST_RADIUS), 2); // heavy falloff with distance
+      let dmg = 70*falloff;
+      if(e.type==='boss') dmg *= 0.3;
+      else if(e.type==='mutant') dmg *= 0.3;   // red-eyed — heavily reduced, an obstacle, not a target
+      else if(e.isRanged) dmg *= 0.5;          // black ranged — usually survives unless very close
+      if(dmg>3) e.takeDamage(dmg);
+      if(!e.dead){
+        const dir = dist>0.01 ? {x:dx/dist,z:dz/dist} : {x:1,z:0};
+        const nx=e.pos.x+dir.x*2.2, nz=e.pos.z+dir.z*2.2; // knockback
+        if(!collidesWithWalls(nx,nz,0.4)) { e.pos.x=nx; e.pos.z=nz; }
+        if(e.state==='lured'){ e.state='chase'; e.stateT=0; e.luredTarget=null; }
+      }
+    } else if(e.state==='lured'){
+      e.state='chase'; e.stateT=0; e.luredTarget=null; // out of the blast — released back to normal aggro
+    }
+  }
+  scene.remove(b.mesh);
+  activePossumBomb = null;
+}
+function updateBombStatusUI(){
+  const el = document.getElementById('bombStatus');
+  if(!Player.hasPossumBomb){ el.style.display='none'; return; }
+  el.style.display='block';
+  if(possumBombCooldown>0) el.textContent = 'POSSUM BOMB '+Math.ceil(possumBombCooldown);
+  else el.textContent = State.isMobile ? 'POSSUM BOMB READY' : 'POSSUM BOMB READY (B)';
+  if(State.isMobile){ document.getElementById('btnBombM').style.display='flex'; }
+}
+
+function updateMissileStatusUI(){
+  const el = document.getElementById('missileStatus');
+  if(!Player.hasMissile){ el.style.display='none'; return; }
+  el.style.display='block';
+  if(missileState==='aiming') el.textContent = 'AIMING… HOLD ON TARGET TO LOCK';
+  else if(missileState==='locked') el.textContent = 'LOCKED — PRESS AGAIN TO FIRE';
+  else if(missileCooldown>0) el.textContent = 'MISSILE RECHARGING '+Math.ceil(missileCooldown)+'s';
+  else el.textContent = State.isMobile ? 'MISSILE READY' : 'MISSILE READY (Q)';
+  if(State.isMobile){ document.getElementById('btnMissileM').style.display='flex'; }
+}
+function updateGunHotbarUI(){
+  const bar = document.getElementById('gunHotbar');
+  if(!Player.hasM14){ bar.style.display='none'; return; }
+  bar.style.display='flex';
+  document.getElementById('gunSlotPistol').classList.toggle('active', currentWeapon==='pistol');
+  document.getElementById('gunSlotM14').classList.toggle('active', currentWeapon==='m14');
+}
+
+// ---------- INTERACTABLES (switches, audio recorder, weapon pickups, ladders — E / mobile button) ----------
+let interactables = []; // {pos:[x,z], radius, label, used, reusable, action}
+function nearestInteractable(){
+  let best=null, bestDist=Infinity;
+  for(const it of interactables){
+    if(it.used) continue;
+    const dx=Player.pos.x-it.pos[0], dz=Player.pos.z-it.pos[1];
+    const d=Math.hypot(dx,dz);
+    if(d<it.radius && d<bestDist){ best=it; bestDist=d; }
+  }
+  return best;
+}
+function tryInteract(){
+  if(State.cutsceneLock || State.onLadder) return;
+  const it = nearestInteractable();
+  if(it){ if(!it.reusable) it.used=true; it.action(); }
+}
+function updateInteractPromptUI(){
+  const el = document.getElementById('interactPrompt');
+  if(State.cutsceneLock || State.onLadder){ el.style.display='none'; if(State.isMobile) document.getElementById('btnInteractM').style.display='none'; return; }
+  const it = nearestInteractable();
+  if(it){
+    el.style.display='block'; el.textContent = it.label + (State.isMobile ? ' — TAP' : ' — PRESS E');
+    if(State.isMobile) document.getElementById('btnInteractM').style.display='flex';
+  } else {
+    el.style.display='none';
+    if(State.isMobile) document.getElementById('btnInteractM').style.display='none';
+  }
+}
+
+// ---------- GENERIC AREA TRIGGERS (used by Level 3's maze encounters) ----------
+function updateGenericTriggers(lvl){
+  if(!lvl.triggers) return;
+  for(const t of lvl.triggers){
+    if(t.fired) continue;
+    if(Player.pos.x>=t.min[0] && Player.pos.x<=t.max[0] && Player.pos.z>=t.min[1] && Player.pos.z<=t.max[1]){
+      t.fired = true;
+      t.action();
+    }
+  }
+}
+
+// ---------- SHOP ----------
+const SHOP_ITEMS = [
+  { id:'missile', name:'HEAT-SEEKING MISSILE', desc:'Aim with its own button, hold on a possum to lock, press again to fire. Once bought, it is yours for good.',
+    cost:300, tag:'ABILITY', repeatable:false, apply:()=>{ Player.hasMissile=true; } },
+  { id:'maxhealth', name:'MAX HEALTH +20', desc:'Raises your health cap and heals you to full.',
+    cost:60, repeatable:true, maxPurchases:3, apply:()=>{ Player.maxHealth+=20; Player.health=Player.maxHealth; } },
+  { id:'damage', name:'PISTOL DAMAGE +6', desc:'Each pistol round hits harder.',
+    cost:70, repeatable:true, maxPurchases:3, apply:()=>{ Weapon.damage+=6; } },
+  { id:'reload', name:'FASTER RELOAD', desc:'Shaves time off every pistol reload.',
+    cost:50, repeatable:true, maxPurchases:3, apply:()=>{ Weapon.reloadTime=Math.max(0.55, Weapon.reloadTime-0.15); } },
+  { id:'m14damage', name:'M14 DAMAGE', desc:"Increases the M14's actual bullet damage.",
+    cost:75, repeatable:true, maxPurchases:3, leveled:true, apply:()=>{ M14.damage+=6; }, requiresLevel3Done:true },
+  { id:'m14mag', name:'M14 MAGAZINE', desc:"Increases the M14's actual magazine capacity.",
+    cost:100, repeatable:true, maxPurchases:2, leveled:true, apply:()=>{ M14.magMax+=6; M14.mag=M14.magMax; }, requiresLevel3Done:true },
+  { id:'m14reload', name:'M14 RELOAD', desc:"Reduces the M14's actual reload time.",
+    cost:75, repeatable:true, maxPurchases:2, leveled:true, apply:()=>{ M14.reloadTime=Math.max(0.7, M14.reloadTime-0.25); }, requiresLevel3Done:true },
+  { id:'m14firerate', name:'M14 FIRE RATE', desc:"Decreases the actual delay between M14 shots.",
+    cost:100, repeatable:true, maxPurchases:2, leveled:true, apply:()=>{ M14.fireRate=Math.max(0.08, M14.fireRate-0.02); }, requiresLevel3Done:true },
+  { id:'m14ammo', name:'M14 AMMO +40', desc:"Restocks the M14's reserve ammunition.",
+    cost:35, repeatable:true, apply:()=>{ M14.reserve=Math.min(200, M14.reserve+40); }, requiresLevel3Done:true },
+  { id:'possumbomb', name:'POSSUM BOMB', desc:'A homemade device that lures possums in, then detonates. Its own button, ~30s cooldown. Once bought, it is yours for good.',
+    cost:200, tag:'ABILITY', repeatable:false, apply:()=>{ Player.hasPossumBomb=true; }, requiresLevel3Done:true },
+];
+function renderShop(){
+  document.getElementById('shopBucks').textContent = State.bucks;
+  const list = document.getElementById('shopList');
+  list.innerHTML='';
+  for(const item of SHOP_ITEMS){
+    if(item.requiresLevel3Done && !State.level3Completed) continue; // not revealed yet
+    const count = State.shopPurchases[item.id]||0;
+    const owned = !item.repeatable && count>=1;
+    const maxed = item.maxPurchases && count>=item.maxPurchases;
+    const afford = State.bucks>=item.cost;
+    const row = document.createElement('div');
+    row.className='shopRow';
+    const levelLine = item.leveled ? `<div class="shopDesc" style="color:var(--sick-bright);">LEVEL ${count}/${item.maxPurchases}</div>` : '';
+    row.innerHTML = `<div class="shopInfo"><div class="shopName">${item.name}${item.tag?`<span class="shopTag">${item.tag}</span>`:''}</div>
+      ${levelLine}<div class="shopDesc">${item.desc}</div></div>
+      <button class="shopBuyBtn" ${(owned||maxed||!afford)?'disabled':''}>${owned?'OWNED':maxed?'MAX':item.cost+' BUCKS'}</button>`;
+    const btn = row.querySelector('button');
+    if(!owned && !maxed){
+      btn.addEventListener('click', ()=>{
+        if(State.bucks<item.cost){ setCenterMsg('NOT ENOUGH CREDITS', 1.4); return; }
+        State.bucks-=item.cost;
+        State.shopPurchases[item.id]=(State.shopPurchases[item.id]||0)+1;
+        item.apply();
+        playBeep(600,0.08,'square',0.5); playBeep(900,0.1,'square',0.5);
+        setCenterMsg(item.leveled ? 'M14 UPGRADED' : item.name+' ACQUIRED', 1.6);
+        renderShop();
+      });
+    }
+    list.appendChild(row);
+  }
+}
+function openShop(){
+  document.getElementById('shopScreen').classList.remove('hidden');
+  renderShop();
+}
+
+// ---------- HUD HELPERS ----------
+// A setTimeout that no-ops if the level has changed (death/restart/new level) since it was
+// scheduled — prevents a delayed scripted-encounter spawn from leaking into a different level.
+function safeTimeout(fn, ms){
+  const lvlAtSchedule = currentLevelIndex;
+  return setTimeout(()=>{ if(currentLevelIndex===lvlAtSchedule && !State.levelEnded) fn(); }, ms);
+}
+
+function setCenterMsg(text, duration){
+  const el = document.getElementById('centerMsg');
+  el.textContent = text; el.style.opacity=1; el.style.transition='none';
+  clearTimeout(setCenterMsg._t);
+  setCenterMsg._t = setTimeout(()=>{ el.style.transition='opacity .8s'; el.style.opacity=0; }, duration*1000);
+}
+function flashHit(){
+  const hm = document.getElementById('hitmarker');
+  hm.style.transition='none'; hm.style.opacity=1; hm.style.transform='translate(-50%,-50%) scale(1)';
+  requestAnimationFrame(()=>{
+    hm.style.transition='opacity .25s, transform .25s'; hm.style.opacity=0; hm.style.transform='translate(-50%,-50%) scale(1.6)';
+  });
+}
+function updateHUD(){
+  document.getElementById('healthNum').textContent = Math.max(0,Math.round(Player.health));
+  document.getElementById('healthFill').style.width = Math.max(0,(Player.health/Player.maxHealth)*100)+'%';
+  document.getElementById('armourNum').textContent = Math.round(Player.armour);
+  document.getElementById('armourFill').style.width = (Player.armour/Player.maxArmour*100)+'%';
+  document.getElementById('bucks').textContent = State.bucks;
+  const w = activeWeapon();
+  document.getElementById('weaponName').textContent = w.name;
+  const reserveText = w.reserve===Infinity ? '∞' : w.reserve;
+  document.getElementById('ammoCount').innerHTML = w.mag + ' <span class="reserve">/ '+reserveText+'</span>';
+  document.getElementById('reloadFill').style.width = w.reloading ? Math.min(100,(w.reloadT/w.reloadTime*100))+'%' : '0%';
+  if(boss && !boss.dead){ document.getElementById('bossBarInner').style.width = Math.max(0,boss.hp/boss.maxHp*100)+'%'; }
+  const vg = document.getElementById('vignette');
+  if(Player.health<30*(Player.maxHealth/100)) vg.style.boxShadow = 'inset 0 0 140px 40px rgba(200,20,20,'+(0.35+0.15*Math.sin(performance.now()/200))+')';
+  else vg.style.boxShadow = 'inset 0 0 0 0 rgba(0,0,0,0)';
+  const puEl = document.getElementById('powerups');
+  puEl.innerHTML='';
+  for(const k in Player.powerups){
+    if(Player.powerups[k]>0){
+      const chip=document.createElement('div'); chip.className='pu-chip';
+      chip.textContent = k.toUpperCase()+' '+Math.ceil(Player.powerups[k])+'s';
+      puEl.appendChild(chip);
+    }
+  }
+  updateMissileLockUI();
+  updateMissileStatusUI();
+  updateBombStatusUI();
+  updateGunHotbarUI();
+  updateInteractPromptUI();
+}
+
+// ---------- DAMAGE / DEATH ----------
+function damagePlayer(dmg){
+  if(Player.downed || State.levelEnded) return;
+  let remain = dmg;
+  if(Player.armour>0){
+    const absorbed = Math.min(Player.armour, remain*0.6);
+    Player.armour -= absorbed; remain -= absorbed;
+  }
+  Player.health -= remain;
+  playHurt();
+  if(State.settings.shake) shakeAmount = 0.25;
+  if(Player.health<=0){ Player.health=0; onPlayerDeath(); }
+}
+let shakeAmount=0;
+function onPlayerDeath(){
+  State.paused = true;
+  exitPointerLock();
+  document.getElementById('gameOverScreen').classList.remove('hidden');
+}
+function restartLevel(){
+  loadLevel(currentLevelIndex);
+  State.bucks = State.levelStartBucks;
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  State.paused = false; State.levelEnded = false;
+  requestPointerLockIfDesktop();
+}
+function respawnAtCheckpoint(){
+  Player.health = Player.maxHealth;
+  Player.pos.copy(Player.checkpoint);
+  Player.vel.set(0,0,0);
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  State.paused = false;
+  requestPointerLockIfDesktop();
+}
+
+// ---------- INPUT ----------
+const keys = {};
+window.addEventListener('keydown', e=>{
+  keys[e.code]=true;
+  if(e.code==='Escape'){ togglePause(); }
+  if(e.code==='KeyR'){ tryReload(); }
+  if(e.code==='KeyQ'){
+    if(!Player.hasMissile){ setCenterMsg('MISSILE NOT OWNED — VISIT THE SHOP', 1.6); }
+    else handleMissileButton();
+  }
+  if(e.code==='KeyE'){ tryInteract(); }
+  if(e.code==='KeyB'){
+    if(!Player.hasPossumBomb){ setCenterMsg('POSSUM BOMB NOT OWNED — VISIT THE SHOP', 1.6); }
+    else throwPossumBomb();
+  }
+  if(e.code==='Digit1'){ currentWeapon='pistol'; }
+  if(e.code==='Digit2'){
+    if(!Player.hasM14){ setCenterMsg('M14 NOT FOUND YET', 1.4); }
+    else currentWeapon='m14';
+  }
+});
+window.addEventListener('keyup', e=>{ keys[e.code]=false; });
+
+let mouseDown=false;
+canvas.addEventListener('mousedown', e=>{
+  if(e.button===0){ mouseDown=true; requestPointerLockIfDesktop(); }
+});
+window.addEventListener('mouseup', ()=>{ mouseDown=false; });
+
+function requestPointerLockIfDesktop(){
+  if(!State.isMobile && State.running && !State.paused){
+    canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock;
+    canvas.requestPointerLock();
+  }
+}
+document.addEventListener('pointerlockchange', ()=>{ State.pointerLocked = document.pointerLockElement===canvas; });
+function exitPointerLock(){ if(document.exitPointerLock) document.exitPointerLock(); }
+
+window.addEventListener('mousemove', e=>{
+  if(!State.pointerLocked) return;
+  const sens = State.settings.sens*0.0011;
+  Player.yaw -= e.movementX*sens;
+  Player.pitch -= e.movementY*sens;
+  Player.pitch = Math.max(-1.4, Math.min(1.4, Player.pitch));
+});
+
+// ---------- MOBILE CONTROLS ----------
+let moveVec = {x:0,y:0};
+let lookTouchId=null, lastLookX=0, lastLookY=0;
+let moveTouchId=null;
+let fireHeld=false;
+let jumpPressed=false;
+
+function setupMobile(){
+  if(State.mobileSetupDone) return;
+  State.mobileSetupDone = true;
+  document.body.classList.add('mobile-layout');
+  document.getElementById('mobileControls').style.display='block';
+  const joyBase = document.getElementById('moveJoyBase');
+  const joyStick = document.getElementById('moveJoyStick');
+  const size = State.settings.joySize;
+  joyBase.style.width=size+'px'; joyBase.style.height=size+'px';
+
+  joyBase.addEventListener('touchstart', e=>{ const t=e.changedTouches[0]; moveTouchId=t.identifier; e.preventDefault(); }, {passive:false});
+  window.addEventListener('touchmove', e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===moveTouchId){
+        const rect = joyBase.getBoundingClientRect();
+        const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+        let dx=(t.clientX-cx)/(rect.width/2), dy=(t.clientY-cy)/(rect.height/2);
+        const len = Math.hypot(dx,dy); if(len>1){dx/=len;dy/=len;}
+        moveVec.x=dx; moveVec.y=dy;
+        joyStick.style.left=(30+dx*30)+'px'; joyStick.style.top=(30+dy*30)+'px';
+      }
+      if(t.identifier===lookTouchId){
+        const dx = t.clientX-lastLookX, dy=t.clientY-lastLookY;
+        const sens = State.settings.sens*0.0022;
+        Player.yaw -= dx*sens; Player.pitch -= dy*sens;
+        Player.pitch = Math.max(-1.4, Math.min(1.4, Player.pitch));
+        lastLookX=t.clientX; lastLookY=t.clientY;
+      }
+    }
+  }, {passive:false});
+  window.addEventListener('touchend', e=>{
+    for(const t of e.changedTouches){
+      if(t.identifier===moveTouchId){ moveTouchId=null; moveVec.x=0; moveVec.y=0; joyStick.style.left='30px'; joyStick.style.top='30px'; }
+      if(t.identifier===lookTouchId){ lookTouchId=null; }
+    }
+  });
+  document.getElementById('lookArea').addEventListener('touchstart', e=>{
+    const t=e.changedTouches[0]; if(lookTouchId===null){ lookTouchId=t.identifier; lastLookX=t.clientX; lastLookY=t.clientY; }
+    e.preventDefault();
+  }, {passive:false});
+
+  const fireBtn = document.getElementById('btnFire');
+  fireBtn.addEventListener('touchstart', e=>{ fireHeld=true; ensureAudio(); e.preventDefault(); e.stopPropagation(); }, {passive:false});
+  fireBtn.addEventListener('touchend', e=>{ fireHeld=false; e.preventDefault(); e.stopPropagation(); }, {passive:false});
+
+  document.getElementById('btnReloadM').addEventListener('touchstart', e=>{ tryReload(); e.preventDefault(); e.stopPropagation(); }, {passive:false});
+  document.getElementById('btnJumpM').addEventListener('touchstart', e=>{ jumpPressed=true; e.preventDefault(); e.stopPropagation(); }, {passive:false});
+  document.getElementById('btnMissileM').addEventListener('touchstart', e=>{
+    if(!Player.hasMissile){ setCenterMsg('MISSILE NOT OWNED — VISIT THE SHOP', 1.6); }
+    else handleMissileButton();
+    e.preventDefault(); e.stopPropagation();
+  }, {passive:false});
+  document.getElementById('btnInteractM').addEventListener('touchstart', e=>{
+    tryInteract(); e.preventDefault(); e.stopPropagation();
+  }, {passive:false});
+  document.getElementById('btnBombM').addEventListener('touchstart', e=>{
+    if(!Player.hasPossumBomb){ setCenterMsg('POSSUM BOMB NOT OWNED — VISIT THE SHOP', 1.6); }
+    else throwPossumBomb();
+    e.preventDefault(); e.stopPropagation();
+  }, {passive:false});
+  document.getElementById('btnPauseM').addEventListener('touchstart', e=>{ togglePause(); e.preventDefault(); e.stopPropagation(); }, {passive:false});
+}
+
+// ---------- SHOOTING ----------
+// Both weapons share this exact logic — pistol behavior is unchanged from before,
+// M14 just plugs into the same formulas via its own weapon object.
+function tryFire(){
+  const w = activeWeapon();
+  if(w.reloading || State.paused || State.levelEnded || State.onLadder) return;
+  if(w.fireT>0) return;
+  if(w.mag<=0){ playEmptyClick(); return; }
+  w.mag--; w.fireT = w.fireRate;
+  playGunshot();
+  triggerRecoil();
+  raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+  const meshes = enemies.filter(e=>!e.dead).map(e=>e.mesh);
+  const hits = raycaster.intersectObjects(meshes, true);
+  if(hits.length>0){
+    const hitMesh = hits[0].object;
+    let root = hitMesh; while(root.parent && root.parent!==scene) root=root.parent;
+    const enemy = enemies.find(e=>e.mesh===root);
+    if(enemy) enemy.takeDamage(w.damage);
+  }
+}
+function tryReload(){
+  // Manual only — never triggered automatically, even at zero ammo.
+  const w = activeWeapon();
+  if(w.reloading || w.mag===w.magMax || w.reserve<=0 || State.paused) return;
+  w.reloading = true; w.reloadT = 0;
+  playReload();
+}
+function finishReload(w){
+  const needed = w.magMax - w.mag;
+  const refill = Math.min(needed, w.reserve);
+  w.mag += refill; w.reserve -= refill; // Infinity reserve (pistol) leaves reserve as Infinity, unchanged behavior
+  w.reloading = false;
+}
+
+// ---------- MOVEMENT / PHYSICS ----------
+function groundHeightAt(x,z){
+  const lvl = LEVELS[currentLevelIndex];
+  if(!lvl.rampZones) return 0;
+  for(const r of lvl.rampZones){
+    if(x>=r.min[0] && x<=r.max[0] && z>=r.min[1] && z<=r.max[1]){
+      const span = r.axis==='x' ? (r.max[0]-r.min[0]) : (r.max[1]-r.min[1]);
+      const pos  = r.axis==='x' ? (x-r.min[0]) : (z-r.min[1]);
+      const t = span>0 ? Math.min(1,Math.max(0,pos/span)) : 1;
+      return r.fromY + (r.toY-r.fromY)*t;
+    }
+  }
+  return 0;
+}
+
+function updatePlayer(dt){
+  if(State.paused || State.levelEnded) return;
+  if(State.cutsceneLock){
+    // camera orientation is driven directly by the recorder-scene lerp during the freeze
+    const euler = new THREE.Euler(Player.pitch, Player.yaw, 0, 'YXZ');
+    camera.quaternion.setFromEuler(euler);
+    camera.position.set(Player.pos.x, Player.pos.y, Player.pos.z);
+    return;
+  }
+  camera.rotation.set(0,0,0);
+  const euler = new THREE.Euler(Player.pitch, Player.yaw, 0, 'YXZ');
+  camera.quaternion.setFromEuler(euler);
+
+  if(State.onLadder){
+    const ladder = State.onLadder;
+    let vy = 0;
+    if(State.isMobile){ vy = -moveVec.y; } else { if(keys['KeyW']) vy=1; if(keys['KeyS']) vy=-1; }
+    Player.pos.y += vy*3.2*dt;
+    Player.pos.x = ladder.x; Player.pos.z = ladder.z;
+    Player.vel.set(0,0,0);
+    let exited = false;
+    if(Player.pos.y >= ladder.topEyeY){ Player.pos.y = ladder.topEyeY; Player.grounded=true; exited=true; }
+    else if(Player.pos.y <= ladder.bottomEyeY){ Player.pos.y = ladder.bottomEyeY; Player.grounded=true; exited=true; }
+    else if(keys['Space'] || jumpPressed){ jumpPressed=false; Player.vel.y = Player.jumpForce*0.5; exited=true; }
+    if(exited) State.onLadder = null;
+    camera.position.set(Player.pos.x, Player.pos.y, Player.pos.z);
+    return;
+  }
+
+  let mx=0, mz=0;
+  if(State.isMobile){ mx = moveVec.x; mz = moveVec.y; }
+  else{
+    if(keys['KeyW']) mz-=1; if(keys['KeyS']) mz+=1;
+    if(keys['KeyA']) mx-=1; if(keys['KeyD']) mx+=1;
+  }
+  const len = Math.hypot(mx,mz); if(len>1){mx/=len; mz/=len;}
+  Player.sprinting = (keys['ShiftLeft']||keys['ShiftRight']) && mz<0;
+  const spd = Player.speed * (Player.sprinting?Player.sprintMul:1) * (Player.powerups.speed>0?1.5:1);
+
+  const forward = new THREE.Vector3(-Math.sin(Player.yaw),0,-Math.cos(Player.yaw));
+  const right = new THREE.Vector3(Math.cos(Player.yaw),0,-Math.sin(Player.yaw));
+  const moveDir = new THREE.Vector3();
+  moveDir.addScaledVector(forward, -mz);
+  moveDir.addScaledVector(right, mx);
+  if(moveDir.lengthSq()>0) moveDir.normalize();
+
+  const stepX = moveDir.x*spd*dt, stepZ = moveDir.z*spd*dt;
+  const nx = Player.pos.x+stepX, nz = Player.pos.z+stepZ;
+  if(!collidesWithWalls(nx, Player.pos.z, Player.radius)) Player.pos.x = nx;
+  if(!collidesWithWalls(Player.pos.x, nz, Player.radius)) Player.pos.z = nz;
+
+  const groundY = groundHeightAt(Player.pos.x, Player.pos.z);
+  const wantJump = keys['Space'] || jumpPressed; jumpPressed=false;
+  if(wantJump && Player.grounded){ Player.vel.y = Player.jumpForce; Player.grounded=false; }
+  Player.vel.y -= 14*dt;
+  Player.pos.y += Player.vel.y*dt;
+  if(Player.pos.y<=Player.height+groundY){ Player.pos.y=Player.height+groundY; Player.vel.y=0; Player.grounded=true; }
+
+  let bobY=0;
+  if(State.settings.headBob && (mx!==0||mz!==0) && Player.grounded){ bobY = Math.sin(performance.now()/110)*0.035; }
+  let shakeX=0, shakeY=0;
+  if(shakeAmount>0){
+    shakeX = (Math.random()-0.5)*shakeAmount; shakeY=(Math.random()-0.5)*shakeAmount;
+    shakeAmount *= 0.85; if(shakeAmount<0.01) shakeAmount=0;
+  }
+  camera.position.set(Player.pos.x+shakeX, Player.pos.y+bobY+shakeY, Player.pos.z);
+
+  updateLevelTriggers();
+}
+
+function updatePowerups(dt){
+  for(const k in Player.powerups){
+    if(Player.powerups[k]>0){ Player.powerups[k]-=dt; if(Player.powerups[k]<=0) delete Player.powerups[k]; }
+  }
+}
+
+// ---------- LEVEL FLOW ----------
+function endLevel(){
+  State.levelEnded = true;
+  exitPointerLock();
+  const lvl = LEVELS[currentLevelIndex];
+  document.getElementById('lcClue').textContent = lvl.clue;
+  document.getElementById('lcBucks').textContent = State.bucks;
+  document.getElementById('lcKills').textContent = State.kills;
+  const secretsRow = document.getElementById('lcSecretsRow');
+  if(secretsFound>0){ secretsRow.style.display='block'; document.getElementById('lcSecrets').textContent = secretsFound; }
+  else secretsRow.style.display='none';
+  document.getElementById('lcM14Row').style.display = Player.hasM14 ? 'block' : 'none';
+  if(currentLevelIndex===2) State.level3Completed = true;
+  document.getElementById('hud').classList.add('hidden');
+  const hasNext = currentLevelIndex+1 < LEVELS.length;
+  document.getElementById('btnLevelCompleteNext').textContent = hasNext ? 'CONTINUE TO UPGRADE SHOP' : 'RETURN TO MAIN MENU';
+  document.getElementById('levelCompleteScreen').classList.remove('hidden');
+}
+
+function loadLevel(index){
+  currentLevelIndex = index;
+  levelGroup.clear(); colliders.length=0; clearLamps();
+  for(const e of enemies){ scene.remove(e.mesh); } enemies.length=0;
+  for(const p of pickups){ scene.remove(p.mesh); } pickups.length=0;
+  for(const ap of acidProjectiles){ scene.remove(ap.mesh); } acidProjectiles.length=0;
+  if(exitPortal){ scene.remove(exitPortal); exitPortal=null; }
+  if(activeMissileProjectile){ scene.remove(activeMissileProjectile.mesh); activeMissileProjectile=null; }
+  if(activePossumBomb){ scene.remove(activePossumBomb.mesh); activePossumBomb=null; }
+  possumBombCooldown = 0;
+  boss=null; waveIndex=-1; waveState='idle'; waveTimer=0;
+  gateChunks=[]; gateCollider=null;
+  interactables = []; switchesActivated = 0; secretsFound = 0; spinningProps = []; pulsingLights = [];
+  State.kills=0; State.bossActive=false; State.bossDefeated=false; State.levelEnded=false; State.cutsceneLock=false; State.onLadder=null;
+  State._waveSpawned=false; State._bossSpawned=false; State._exitSpawned=false; State._gateOpened=false; State._doorReady=false;
+  missileState='idle'; missileTarget=null; missileLockT=0; missileCooldown=0;
+  document.getElementById('bossBar').style.display='none';
+  document.getElementById('subtitleBox').style.display='none';
+  document.getElementById('objective').textContent = 'FIND A WAY DEEPER INTO THE DEN';
+
+  const lvl = LEVELS[index];
+  if(lvl.triggers) for(const t of lvl.triggers) t.fired=false;
+  currentWeapon = (index===2) ? 'pistol' : currentWeapon; // only Level 3 itself forces a pistol-only restart
+  if(index===2) Player.hasM14 = false; // the M14 is an in-level pickup in Level 3 — a (re)load there puts it back on the ground
+  lvl.build();
+  spawnGateWall(lvl.gateZ, lvl.gateX||0);
+  if(lvl.initialObjective) document.getElementById('objective').textContent = lvl.initialObjective;
+  Player.health = Player.maxHealth; Player.armour = 0;
+  Player.pos.set(lvl.startPos[0], lvl.startPos[1], lvl.startPos[2]);
+  Player.checkpoint.set(lvl.startPos[0], lvl.startPos[1], lvl.startPos[2]);
+  Weapon.mag = Weapon.magMax; Weapon.reloading=false; Weapon.reloadT=0;
+  M14.mag = M14.magMax; M14.reserve = 80; M14.reloading=false; M14.reloadT=0;
+  recoilT=0; muzzleFlashT=0;
+  placeInitialPickups(lvl.pickups || []);
+}
+
+// ---------- LEVEL 3 SUPPORT: camera lerp + subtitles + switches/secrets state ----------
+function lerpCameraTo(targetYaw, targetPitch, duration, onDone){
+  const startYaw=Player.yaw, startPitch=Player.pitch;
+  let t=0;
+  function step(){
+    t+=1/60;
+    const f=Math.min(1,t/duration);
+    Player.yaw = startYaw + (targetYaw-startYaw)*f;
+    Player.pitch = startPitch + (targetPitch-startPitch)*f;
+    if(f<1) requestAnimationFrame(step); else if(onDone) onDone();
+  }
+  step();
+}
+function showSubtitleSequence(lines, onDone){
+  let i=0;
+  const el = document.getElementById('subtitleBox');
+  function next(){
+    if(i>=lines.length){ el.style.display='none'; if(onDone) onDone(); return; }
+    el.style.display='block';
+    el.textContent = lines[i].text;
+    ensureAudio(); playBeep(1400,0.03,'square',0.15); // quiet typewriter-ish tick per line
+    i++;
+    setTimeout(next, 2700);
+  }
+  next();
+}
+let switchesActivated = 0;
+let secretsFound = 0;
+let spinningProps = [];
+let pulsingLights = [];
+function updatePulsingLights(dt){
+  const t = performance.now()/1000;
+  for(const p of pulsingLights){
+    if(!p.active) continue;
+    p.light.intensity = Math.max(0, p.base + Math.sin(t*p.speed)*p.amp);
+    if(p.material) p.material.emissiveIntensity = Math.max(0, p.matBase + Math.sin(t*p.speed)*p.matAmp);
+  }
+}
+
+// ---------- CUTSCENE ----------
+let introIdx=0;
+function showCutscene(lines, onDone){
+  introIdx=0;
+  const el = document.getElementById('cutscene');
+  const textEl = document.getElementById('cutsceneText');
+  const speakerEl = document.getElementById('cutsceneSpeaker');
+  const portraitEl = document.getElementById('cutscenePortrait');
+  el.classList.remove('hidden');
+  let typing=false, typeTimer=null;
+
+  function portraitColorFor(who){
+    if(who==='PLAYER') return 'var(--sick)';
+    if(who==='LIAM') return '#8a2f2f';
+    return 'var(--rust)';
+  }
+  function typeLine(){
+    const line = lines[introIdx];
+    speakerEl.textContent = line.who;
+    portraitEl.textContent = line.who[0];
+    portraitEl.style.background = portraitColorFor(line.who);
+    textEl.textContent = '';
+    let i=0; typing=true;
+    clearInterval(typeTimer);
+    typeTimer = setInterval(()=>{
+      i++;
+      textEl.textContent = line.text.slice(0,i);
+      if(i>=line.text.length){ clearInterval(typeTimer); typing=false; }
+    }, 22);
+  }
+  function advance(){
+    if(typing){ clearInterval(typeTimer); textEl.textContent = lines[introIdx].text; typing=false; return; }
+    introIdx++;
+    if(introIdx>=lines.length){ el.classList.add('hidden'); onDone(); return; }
+    typeLine();
+  }
+  typeLine();
+  el.onclick = advance;
+}
+
+// ---------- GAME LOOP ----------
+let lastT = performance.now();
+function loop(){
+  requestAnimationFrame(loop);
+  const now = performance.now();
+  const dt = Math.min(0.05,(now-lastT)/1000);
+  lastT = now;
+  if(!State.running) { renderer.render(scene,camera); return; }
+
+  if(!State.paused && !State.levelEnded){
+    updatePlayer(dt);
+    updateGunViewmodel(dt);
+    for(const p of spinningProps) p.rotation.z += dt*2.4;
+    updatePulsingLights(dt);
+    if(!State.cutsceneLock){
+      updatePickups(dt);
+      updatePowerups(dt);
+      updateWaves(dt);
+      updateExitPortal(dt);
+      updateMissile(dt);
+      updatePossumBomb(dt);
+      updateAcidProjectiles(dt);
+      despawnFarBehindPlayer();
+      for(const e of enemies) e.update(dt, Player.pos);
+
+      if(Weapon.fireT>0) Weapon.fireT-=dt;
+      if(Weapon.reloading){ Weapon.reloadT+=dt; if(Weapon.reloadT>=Weapon.reloadTime) finishReload(Weapon); }
+      if(M14.fireT>0) M14.fireT-=dt;
+      if(M14.reloading){ M14.reloadT+=dt; if(M14.reloadT>=M14.reloadTime) finishReload(M14); }
+      const wantFire = State.isMobile ? fireHeld : mouseDown;
+      if(wantFire) tryFire();
+    }
+  }
+  updateHUD();
+  renderer.render(scene, camera);
+}
+
+// ---------- PAUSE / MENU WIRING ----------
+function togglePause(){
+  if(!State.running || State.levelEnded) return;
+  State.paused = !State.paused;
+  document.getElementById('pauseMenu').classList.toggle('hidden', !State.paused);
+  if(State.paused) exitPointerLock(); else requestPointerLockIfDesktop();
+}
+
+function startLevel(index){
+  loadLevel(index);
+  document.getElementById('hud').classList.remove('hidden');
+  if(State.isMobile) setupMobile();
+  State.levelStartBucks = State.bucks;
+  showCutscene(LEVELS[index].introLines, ()=>{
+    State.running = true; State.paused = false;
+    requestPointerLockIfDesktop();
+  });
+}
+function startGame(){
+  State.bucks=0; State.kills=0; State.shopPurchases={}; State.level3Completed=false;
+  Player.hasMissile=false; Player.hasPossumBomb=false; Player.maxHealth=100; Weapon.damage=18; Weapon.reloadTime=1.1;
+  M14.damage=34; M14.magMax=20; M14.reloadTime=1.6; M14.fireRate=0.14;
+  document.getElementById('mainMenu').classList.add('hidden');
+  startLevel(0);
+}
+
+document.getElementById('btnPlay').addEventListener('click', startGame);
+document.getElementById('btnControls').addEventListener('click', ()=>{
+  document.getElementById('mainMenu').classList.add('hidden');
+  document.getElementById('controlsScreen').classList.remove('hidden');
+});
+document.getElementById('btnControlsBack').addEventListener('click', ()=>{
+  document.getElementById('controlsScreen').classList.add('hidden');
+  document.getElementById('mainMenu').classList.remove('hidden');
+});
+document.getElementById('btnSettings').addEventListener('click', ()=>{
+  document.getElementById('mainMenu').classList.add('hidden');
+  document.getElementById('settingsScreen').classList.remove('hidden');
+});
+document.getElementById('btnSettingsBack').addEventListener('click', ()=>{
+  document.getElementById('settingsScreen').classList.add('hidden');
+  if(State.paused){ document.getElementById('pauseMenu').classList.remove('hidden'); }
+  else document.getElementById('mainMenu').classList.remove('hidden');
+});
+document.getElementById('btnPauseSettings').addEventListener('click', ()=>{
+  document.getElementById('pauseMenu').classList.add('hidden');
+  document.getElementById('settingsScreen').classList.remove('hidden');
+});
+document.getElementById('btnResume').addEventListener('click', togglePause);
+document.getElementById('btnRestartCP').addEventListener('click', ()=>{
+  respawnAtCheckpoint();
+  document.getElementById('pauseMenu').classList.add('hidden');
+  State.paused=false; requestPointerLockIfDesktop();
+});
+document.getElementById('btnQuit').addEventListener('click', ()=>{
+  State.running=false; State.paused=false;
+  document.getElementById('pauseMenu').classList.add('hidden');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('mainMenu').classList.remove('hidden');
+  exitPointerLock();
+});
+document.getElementById('btnRespawn').addEventListener('click', restartLevel);
+document.getElementById('btnGoQuit').addEventListener('click', ()=>{
+  State.running=false;
+  document.getElementById('gameOverScreen').classList.add('hidden');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('mainMenu').classList.remove('hidden');
+});
+document.getElementById('btnLevelCompleteNext').addEventListener('click', ()=>{
+  const hasNext = currentLevelIndex+1 < LEVELS.length;
+  document.getElementById('levelCompleteScreen').classList.add('hidden');
+  if(hasNext){ openShop(); }
+  else { State.running=false; document.getElementById('mainMenu').classList.remove('hidden'); }
+});
+document.getElementById('btnShopContinue').addEventListener('click', ()=>{
+  document.getElementById('shopScreen').classList.add('hidden');
+  startLevel(currentLevelIndex+1);
+});
+const gunSlotPistolEl = document.getElementById('gunSlotPistol');
+const gunSlotM14El = document.getElementById('gunSlotM14');
+gunSlotPistolEl.addEventListener('click', ()=>{ currentWeapon='pistol'; });
+gunSlotM14El.addEventListener('click', ()=>{ if(Player.hasM14) currentWeapon='m14'; });
+gunSlotPistolEl.addEventListener('touchstart', e=>{ currentWeapon='pistol'; e.preventDefault(); e.stopPropagation(); }, {passive:false});
+gunSlotM14El.addEventListener('touchstart', e=>{ if(Player.hasM14) currentWeapon='m14'; e.preventDefault(); e.stopPropagation(); }, {passive:false});
+
+// settings bindings
+const sensSlider=document.getElementById('sensSlider'), volSlider=document.getElementById('volSlider'),
+      shakeToggle=document.getElementById('shakeToggle'), particleToggle=document.getElementById('particleToggle'),
+      bobToggle=document.getElementById('bobToggle'), joySizeSlider=document.getElementById('joySizeSlider');
+sensSlider.value=State.settings.sens; volSlider.value=State.settings.vol; joySizeSlider.value=State.settings.joySize;
+sensSlider.addEventListener('input', ()=>State.settings.sens=+sensSlider.value);
+volSlider.addEventListener('input', ()=>State.settings.vol=+volSlider.value);
+shakeToggle.addEventListener('change', ()=>State.settings.shake=shakeToggle.checked);
+particleToggle.addEventListener('change', ()=>State.settings.reduceParticles=particleToggle.checked);
+bobToggle.addEventListener('change', ()=>State.settings.headBob=bobToggle.checked);
+joySizeSlider.addEventListener('input', ()=>{
+  State.settings.joySize=+joySizeSlider.value;
+  const jb=document.getElementById('moveJoyBase'); jb.style.width=State.settings.joySize+'px'; jb.style.height=State.settings.joySize+'px';
+});
+
+window.addEventListener('contextmenu', e=>e.preventDefault());
+
+loop();
+</script>
+</body>
+</html>
